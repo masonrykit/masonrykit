@@ -10,7 +10,7 @@ export default defineConfig({
   plugins: [react()],
   resolve: {
     alias: {
-      '@masonrykit/browser': resolvePath(__dirname, '../core/src/index.ts'),
+      '@masonrykit/browser': resolvePath(__dirname, '../browser/src/index.ts'),
     },
   },
   test: {

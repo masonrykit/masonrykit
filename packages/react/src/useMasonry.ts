@@ -3,13 +3,13 @@ import type React from 'react'
 import {
   computeColumns,
   computeMasonryLayout,
-  observeElementWidth,
   type MasonryCellInput,
   type MasonryLayoutCell,
   type MasonryLayoutResult,
   type MasonryOptions,
   type MasonryStamp,
-} from '@masonrykit/browser'
+} from '@masonrykit/core'
+import { observeElementWidth } from '@masonrykit/browser'
 
 export type { MasonryLayoutCell, MasonryLayoutResult, MasonryOptions, MasonryStamp }
 

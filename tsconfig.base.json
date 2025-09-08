@@ -21,7 +21,7 @@
     "verbatimModuleSyntax": true,
     "isolatedModules": true,
     "useDefineForClassFields": true,
-    "importsNotUsedAsValues": "remove",
+
     "noFallthroughCasesInSwitch": true,
     "noImplicitOverride": true,
     "noUncheckedIndexedAccess": true,
