@@ -23,10 +23,7 @@ const external = Array.from(new Set([...peerDeps, ...extraExternals]))
 
 export default defineConfig({
   // Explicit entry for clarity (defaults to src/index.ts if present)
-  entry: {
-    index: 'src/index.tsx',
-    useMasonry: 'src/useMasonry.ts',
-  },
+  entry: 'src/index.tsx',
 
   // Outputs
   format: ['esm', 'cjs'],

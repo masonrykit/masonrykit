@@ -2,622 +2,496 @@
  * @packageDocumentation
  * @public
  */
-import React, {
-  createContext,
-  useCallback,
-  useContext,
-  useLayoutEffect,
-  useMemo,
-  useRef,
-  useState,
-  forwardRef,
-  memo,
-} from 'react'
+import { useLayoutEffect, useMemo, useRef, useState, useEffect } from 'react'
+
+const useIsomorphicLayoutEffect = typeof window !== 'undefined' ? useLayoutEffect : useEffect
+
 import {
   computeColumns,
   computeMasonryLayout,
-  type MasonryLayoutCell,
   type MasonryLayoutResult,
   type MasonryStamp,
-} from '@masonrykit/core'
+  type MasonryCellInput,
+} from '@masonrykit/browser'
+import { observeElementWidth } from '@masonrykit/browser'
+// Masonry React entry: data-driven, writer-based API (no preset CSS var names or classes).
 
-/**
- * @masonrykit/react (CSS-first)
- *
- * Declarative Masonry components where:
- * - All configuration is via CSS variables (ideally using container queries / Tailwind v4).
- * - JS only bridges: measure container width, read CSS vars, compute layout, write output vars.
- *
- * Components:
- * - Grid: reads CSS vars (--mk-column-width, --mk-gap, --mk-horizontal-order), collects Cells and Stamps,
- *         computes layout with @masonrykit/core, writes --mk-cell-* vars per Cell and --mk-grid-height on itself.
- * - Cell: declares item inputs via CSS vars: --mk-cell-span, --mk-cell-height, --mk-cell-ar.
- * - StampCols: declares column-aligned stamps via CSS vars: --mk-stamp-start-col, --mk-stamp-span, --mk-stamp-top, --mk-stamp-height.
- * - Stamp: declares pixel-based stamps via: --mk-stamp-x, --mk-stamp-y, --mk-stamp-width, --mk-stamp-height.
- *
- * Naming conventions:
- * - Grid input vars: --mk-column-width, --mk-gap, --mk-horizontal-order (0|1).
- * - Grid output vars: --mk-grid-height
- * - Cell input vars: --mk-cell-span, --mk-cell-height, --mk-cell-aspect-ratio
- * - Cell output vars: --mk-cell-left, --mk-cell-top, --mk-cell-width, --mk-cell-height, --mk-cell-column, --mk-cell-span, --mk-cell-index
- * - StampCols input vars: --mk-stamp-start-col, --mk-stamp-span, --mk-stamp-top, --mk-stamp-height
- * - Stamp (px) input vars: --mk-stamp-x, --mk-stamp-y, --mk-stamp-width, --mk-stamp-height
- */
-
-/* ---------------------------------- Utils ---------------------------------- */
-
-function setRef<T>(ref: React.Ref<T> | undefined, value: T | null) {
-  if (!ref) return
-  if (typeof ref === 'function') {
-    ref(value)
-  } else {
-    ;(ref as unknown as { current: T | null }).current = value
-  }
-}
-
-function parseCssNumber(v: string | null | undefined): number | undefined {
-  if (!v) return undefined
-  const n = parseFloat(v.trim())
-  return Number.isFinite(n) ? n : undefined
-}
-
-function getCssNumber(el: Element, ...names: string[]): number | undefined {
-  if (typeof window === 'undefined') return undefined
-  const cs = window.getComputedStyle(el as Element)
-  for (const name of names) {
-    const v = cs.getPropertyValue(name)
-    const n = parseCssNumber(v)
-    if (typeof n === 'number') return n
-  }
-  return undefined
-}
-
-function raf(fn: () => void) {
-  if (typeof window === 'undefined' || !('requestAnimationFrame' in window)) {
-    fn()
-    return
-  }
-  window.requestAnimationFrame(fn)
-}
-
-function observeElementWidth(
-  element: Element | null | undefined,
-  onWidth: (w: number) => void,
-): () => void {
-  if (typeof window === 'undefined' || !element) return () => {}
-
-  let disposed = false
-  const measure = () => {
-    if (disposed) return
-    const rect = (element as HTMLElement)?.getBoundingClientRect?.()
-    if (rect) onWidth(rect.width)
-  }
-
-  // Initial call and again on next frame to ensure width is picked up after mount
-  measure()
-  raf(measure)
-
-  if (typeof ResizeObserver !== 'undefined') {
-    const ro = new ResizeObserver(() => raf(measure))
-    ro.observe(element)
-    return () => {
-      disposed = true
-      ro.disconnect()
-    }
-  }
-
-  const handler = () => raf(measure)
-  if (typeof window !== 'undefined' && 'addEventListener' in window) {
-    window.addEventListener('resize', handler, { passive: true })
-    return () => {
-      disposed = true
-      window.removeEventListener('resize', handler)
-    }
-  }
-
-  return () => {
-    disposed = true
-  }
-}
-
-/**
- * Helper to build CSS custom properties with proper units (for DX).
- * - gapPx: writes --mk-gap-px (px)
- * - gap: writes unitless --mk-gap (numeric, used with calc(* 1px) in CSS)
- * - columnWidth: unitless desired column width (number)
- * - height: writes --mk-cell-height (px)
- * - aspectRatio: writes --mk-cell-aspect-ratio (number)
- * - span: writes --mk-cell-span (number)
- * - horizontalOrder: writes --mk-horizontal-order (0|1)
- * @public
- */
-/** @public */
-export function cssVars(input: {
-  gapPx?: number
-  gap?: number
-  columnWidth?: number
-  height?: number
-  aspectRatio?: number
-  span?: number
-  horizontalOrder?: boolean
-}): React.CSSProperties {
-  const out: Record<string, string | number> = {}
-  if (input.gapPx != null) out['--mk-gap-px'] = `${Math.max(0, Math.round(input.gapPx))}px`
-  if (input.gap != null) out['--mk-gap'] = `${Math.max(0, Math.round(input.gap))}`
-  if (input.columnWidth != null)
-    out['--mk-column-width'] = `${Math.max(1, Math.round(input.columnWidth))}`
-  if (input.height != null) out['--mk-cell-height'] = `${Math.max(0, Math.round(input.height))}px`
-  if (input.aspectRatio != null) out['--mk-cell-aspect-ratio'] = `${input.aspectRatio}`
-  if (input.span != null) out['--mk-cell-span'] = `${Math.max(1, Math.round(input.span))}`
-  if (input.horizontalOrder != null) out['--mk-horizontal-order'] = input.horizontalOrder ? 1 : 0
-  return out as React.CSSProperties
-}
-
-/* ------------------------------- Grid Context ------------------------------- */
-
-type _RegisteredCell = {
-  id: number
-  ref: React.RefObject<HTMLElement | null>
-  // Read input CSS vars from this cell element
-  readInputs: () => {
-    span: number
-    height?: number
-    aspectRatio?: number
-  }
-}
-
-type GridRegistry = {
-  addCell: (entry: _RegisteredCell) => void
-  removeCell: (entry: _RegisteredCell) => void
-  requestCompute: () => void
-  getGridRef: () => HTMLElement | null
-  getPositionFor: (el: HTMLElement | null) => any
-  layoutVersion: number
-}
-
-const GridContext = createContext<GridRegistry | null>(null)
-
-function useGridRegistry(): GridRegistry {
-  const ctx = useContext(GridContext)
-  if (!ctx) {
-    throw new Error('Masonry components must be used inside <Masonry.Grid>')
-  }
-  return ctx
-}
-
-/* ---------------------------------- Grid ----------------------------------- */
-
-/** @public */
-/** @public */
-export type GridProps = {
-  as?: React.ElementType
-  className?: string
-  style?: React.CSSProperties
-  children?: React.ReactNode
+export type StampCol = {
   /**
-   * Apply computed positions to cells.
-   * - 'dom' (default): write CSS variables directly to the cell DOM nodes (renderless).
-   * - 'react': store positions and trigger a re-render so Cells can apply styles via props.
+   * Zero-based column index where the stamp starts.
    */
-  applyInlineStyles?: 'dom' | 'react'
+  startCol: number
   /**
-   * Optional pixel-based stamps applied directly in the layout.
+   * Number of columns the stamp spans (>= 1).
+   */
+  span: number
+  /**
+   * Top offset in pixels from the grid's top edge.
+   */
+  top: number
+  /**
+   * Height of the stamp rectangle in pixels.
+   */
+  height: number
+}
+
+export type UseMasonryOptions = {
+  /**
+   * Grid inner width resolver: literal number, CSS var, or function.
+   */
+  width: Resolver<number> | undefined
+  /**
+   * Gap resolver: literal number, CSS var, or function.
+   */
+  gap: Resolver<number> | undefined
+  /**
+   * Column width resolver: literal number, CSS var, or function.
+   */
+  columnWidth: Resolver<number> | undefined
+  /**
+   * Horizontal order resolver: literal boolean, CSS var, or function.
+   */
+  horizontalOrder: Resolver<boolean> | undefined
+  /**
+   * Optional px-based stamps that pre-occupy space.
+   */
+  stamps: MasonryStamp[] | undefined
+  /**
+   * Optional column-aligned stamps that will be converted to pixel stamps using resolved column/gap sizes.
+   */
+  stampsCols: Array<StampCol> | undefined
+}
+
+/**
+ * React hook that computes a Masonry layout for a list of cells.
+ *
+ * - If `options.gridWidth` is provided, it will be used directly (no measuring).
+ * - Otherwise, the hook measures the width of the attached grid element.
+ * - Optionally reads CSS variables when `cssVars` is enabled; variable names are determined by the consumer.
+ */
+export function useMasonry<M>(
+  cells: readonly MasonryCellInput<M>[],
+  options: UseMasonryOptions,
+): {
+  /**
+   * Attach this ref to the grid element when you want the hook to measure width automatically.
+   * If options.width is a literal number, no measuring occurs.
+   */
+  ref: React.RefObject<HTMLDivElement | null>
+  /**
+   * The latest measured or provided grid width.
+   */
+  width: number
+  /**
+   * The computed Masonry layout result.
+   */
+  layout: MasonryLayoutResult<M>
+} {
+  const gridRef = useRef<HTMLDivElement | null>(null)
+  const [measuredWidth, setMeasuredWidth] = useState<number>(0)
+
+  // Observe the element width when width is not provided as a literal number
+  useEffect(() => {
+    if (typeof options.width === 'number') return
+    const el = gridRef.current
+    if (!el) return
+    const dispose = observeElementWidth(el, (w) => setMeasuredWidth(Math.max(0, Math.floor(w))))
+    return dispose
+  }, [options.width])
+
+  const layout = useMemo(() => {
+    const el = gridRef.current
+
+    // Resolve width
+    const resolvedWidth =
+      typeof options.width === 'number'
+        ? options.width
+        : el
+          ? resolveInput(el, options.width)
+          : undefined
+    const gridWidth = Math.max(0, Math.floor((resolvedWidth ?? measuredWidth) || 0))
+
+    if (gridWidth <= 0 || cells.length === 0) {
+      return {
+        cells: [],
+        grid: { width: gridWidth, height: 0, columnCount: 0, columnWidth: 0, gap: 0 },
+      } as MasonryLayoutResult<M>
+    }
+
+    // Resolve other inputs
+    const gap = el ? (resolveInput(el, options.gap) ?? 0) : 0
+    const columnWidth = el ? resolveInput(el, options.columnWidth) : undefined
+    const horizontalOrder = !!(el ? resolveInput(el, options.horizontalOrder) : undefined)
+
+    // Resolve columns (final columnWidth/gap) to support stampsCols conversion
+    const resolved = computeColumns({
+      gridWidth,
+      gap: Math.max(0, Math.round(gap)),
+      ...(typeof columnWidth === 'number'
+        ? { columnWidth: Math.max(1, Math.round(columnWidth)) }
+        : {}),
+    })
+
+    // Convert column-aligned stamps to pixel-based stamps
+    const pixelStamps: MasonryStamp[] = []
+    if (options.stampsCols && options.stampsCols.length > 0) {
+      const cw = Math.round(resolved.columnWidth)
+      const g = Math.round(resolved.gap)
+      const step = cw + g
+      for (const sc of options.stampsCols) {
+        const span = Math.max(1, Math.floor(sc.span))
+        const x = Math.round(sc.startCol * step)
+        const width = Math.round(span * resolved.columnWidth + (span - 1) * resolved.gap)
+        pixelStamps.push({
+          x,
+          y: Math.round(sc.top),
+          width,
+          height: Math.round(sc.height),
+        })
+      }
+    }
+
+    const mergedStamps = (options.stamps && options.stamps.length ? options.stamps : []).concat(
+      pixelStamps,
+    )
+
+    return computeMasonryLayout(cells, {
+      gridWidth,
+      gap: resolved.gap,
+      columnWidth: resolved.columnWidth,
+      horizontalOrder,
+      ...(mergedStamps.length ? { stamps: mergedStamps } : {}),
+    })
+  }, [
+    cells,
+    measuredWidth,
+    options.width,
+    options.gap,
+    options.columnWidth,
+    options.horizontalOrder,
+    options.stamps,
+    options.stampsCols,
+  ])
+
+  return {
+    ref: gridRef,
+    width: typeof options.width === 'number' ? options.width : measuredWidth,
+    layout,
+  }
+}
+
+export type Resolver<T> =
+  | T
+  | { cssVar: string; parse?: (raw: string) => T | undefined }
+  | ((el: HTMLElement) => T | undefined)
+
+/**
+ * Resolve a value from a consumer-provided resolver:
+ * - number/boolean literal
+ * - CSS variable name (with optional parser)
+ * - function that reads from the DOM element
+ */
+function resolveInput<T>(el: HTMLElement, resolver: Resolver<T> | undefined): T | undefined {
+  if (resolver == null) return undefined
+  if (typeof resolver === 'function') {
+    try {
+      return (resolver as (el: HTMLElement) => T | undefined)(el)
+    } catch {
+      return undefined
+    }
+  }
+  if (typeof resolver === 'object' && 'cssVar' in resolver) {
+    const raw =
+      typeof window !== 'undefined'
+        ? window.getComputedStyle(el).getPropertyValue(resolver.cssVar).trim()
+        : ''
+    if (!raw) return undefined
+    if (resolver.parse) {
+      try {
+        return resolver.parse(raw)
+      } catch {
+        return undefined
+      }
+    }
+    // Default parse for number/boolean-ish values
+    const lowered = raw.toLowerCase()
+    if (lowered === 'true') return true as unknown as T
+    if (lowered === 'false') return false as unknown as T
+    const n = Number.parseFloat(raw)
+    return Number.isFinite(n) ? (n as unknown as T) : (undefined as unknown as T)
+  }
+  // literal value
+  return resolver as T
+}
+
+export type MasonryProps<M = unknown> = {
+  /**
+   * Grid cells driving the layout. Use height or aspectRatio (width/height).
+   */
+  cells: ReadonlyArray<MasonryCellInput<M>>
+  /**
+   * Grid inner width (px). If omitted, the component observes its own width.
+   * Accepts a literal number, a CSS variable resolver, or a function resolver.
+   */
+  width?: Resolver<number>
+  /**
+   * Gap resolver: literal number, CSS var, or function.
+   */
+  gap?: Resolver<number>
+  /**
+   * Column width resolver: literal number, CSS var, or function.
+   */
+  columnWidth?: Resolver<number>
+  /**
+   * Horizontal order resolver: literal boolean, CSS var, or function.
+   */
+  horizontalOrder?: Resolver<boolean>
+  /**
+   * Optional px-based stamps that pre-occupy space.
    */
   stamps?: MasonryStamp[]
   /**
-   * Optional column-aligned stamps that will be converted to px using resolved columns.
+   * Optional column-aligned stamps; converted to px using resolved columns.
    */
   stampsCols?: Array<{ startCol: number; span: number; top: number; height: number }>
   /**
-   * Optional callback invoked after each successful layout compute.
+   * Return styles for each cell wrapper. You control which CSS properties/variables to set.
    */
-  onLayout?: (result: MasonryLayoutResult<any>) => void
+  setCellStyle: (
+    geom: { x: number; y: number; width: number; height: number },
+    ctx: {
+      index: number
+      cell: MasonryCellInput<M>
+      layout: MasonryLayoutResult<M>
+    },
+  ) => React.CSSProperties
+  /**
+   * Optionally return grid-level styles (for example, setting the grid height).
+   */
+  setGridStyle?: (
+    grid: MasonryLayoutResult<M>['grid'],
+    ctx: { layout: MasonryLayoutResult<M> },
+  ) => React.CSSProperties
+  /**
+   * Optional applier to apply a style object to an element (used on updates).
+   * Defaults to an internal applier that sets CSS custom properties and inline styles.
+   */
+  applyStyle?: (el: HTMLElement, style: React.CSSProperties) => void
+  /**
+   * Render function for a cell's content. Must return stable JSX for the cell key.
+   */
+  renderCell: (cell: MasonryCellInput<M>, index: number) => React.ReactNode
+  /**
+   * Optional function to derive a stable key for each cell. Defaults to cell.id || String(index).
+   */
+  keyForCell?: (cell: MasonryCellInput<M>, index: number) => string
+  /**
+   * Optional initial className/style for the grid wrapper.
+   */
+  gridClassName?: string
+  gridStyle?: React.CSSProperties
+  /**
+   * Optional initial className/style for each cell wrapper.
+   */
+  cellClassName?: string
+  cellStyle?: React.CSSProperties
+  /**
+   * Props applied to the root grid element. You control className/styles; this component won't dictate them.
+   */
+  gridProps?: React.HTMLAttributes<HTMLDivElement>
 }
 
-/** @public */
-/** @public */
-export const Grid = memo(
-  forwardRef<HTMLElement, GridProps>(function Grid(props, forwardedRef) {
-    const {
-      as: As = 'div',
-      className,
-      style,
-      children,
-      onLayout,
-      applyInlineStyles = 'dom',
-      stamps,
-      stampsCols,
-    } = props
-    const gridRef = useRef<HTMLElement | null>(null)
+/**
+ * Data-driven, imperative Masonry grid. Does not dictate class names or CSS variable names.
+ * - Accepts data items and computes geometry with @masonrykit/core (re-exported via @masonrykit/browser).
+ * - Renders imperatively for performance: creates DOM nodes once via renderItem and updates geometry inline.
+ * - The container's width is either observed or provided, and the container's height is set inline.
+ */
+export function Masonry<M = unknown>({
+  cells,
+  width: widthInput,
+  gap: gapInput,
+  columnWidth: columnWidthInput,
+  horizontalOrder: horizontalOrderInput,
+  stamps,
+  stampsCols,
+  setCellStyle,
+  setGridStyle,
+  applyStyle: applyStyleProp,
+  renderCell,
+  keyForCell,
+  gridClassName,
+  gridStyle,
+  cellClassName,
+  cellStyle,
+  gridProps,
+}: MasonryProps<M>) {
+  const {
+    ref: rootRef,
+    width: _gridWidth,
+    layout,
+  } = useMasonry<M>(cells, {
+    width: widthInput ?? undefined,
+    gap: gapInput ?? undefined,
+    columnWidth: columnWidthInput ?? undefined,
+    horizontalOrder: horizontalOrderInput ?? undefined,
+    stamps: stamps ?? undefined,
+    stampsCols: stampsCols ?? undefined,
+  })
 
-    const [layoutVersion, setLayoutVersion] = useState(0)
+  // Track DOM nodes per cell key for stable reconciliation
+  const nodesRef = useRef<Map<string, HTMLDivElement>>(new Map())
 
-    // Expose ref via callback ref
-    const setGridRef = useCallback(
-      (node: HTMLElement | null) => {
-        gridRef.current = node
-        setRef(forwardedRef, node)
-      },
-      [forwardedRef],
-    )
+  // Prepare stable keys and refs for cells; content is provided by renderCell
+  const keyFn =
+    keyForCell ??
+    ((cell: MasonryCellInput<M>, i: number) => (cell.id != null ? String(cell.id) : String(i)))
 
-    // DOM query approach (no registries) to ensure we always see current children
-    const positionsRef = useRef<Map<HTMLElement, MasonryLayoutCell<any>>>(new Map())
-    const cellsRef = useRef<_RegisteredCell[]>([])
-    const [width, setWidth] = useState(0)
-    const widthRef = useRef(0)
-    const widthUpdateScheduledRef = useRef(false)
-    const pendingWidthRef = useRef<number | null>(null)
-    const lastComputedWidthRef = useRef(0)
-    useLayoutEffect(() => {
-      widthRef.current = width
-    }, [width])
-    const computeLayoutRef = useRef<() => void>(() => {})
-    const computePendingRef = useRef(false)
-    const requestCompute = useCallback(() => {
-      if (computePendingRef.current) return
-      computePendingRef.current = true
-      raf(() => {
-        computePendingRef.current = false
-        const run = computeLayoutRef.current
-        if (typeof run === 'function') run()
-      })
-    }, [])
+  const setCellRefForKey = (key: string) => (el: HTMLDivElement | null) => {
+    if (el) {
+      nodesRef.current.set(key, el)
+    } else {
+      nodesRef.current.delete(key)
+    }
+  }
 
-    // Observe grid width (layout effect)
-    useLayoutEffect(() => {
-      const el = gridRef.current
-      if (!el) return
-
-      const disposeWidth = observeElementWidth(el, (w) => {
-        const mw = Math.max(0, Math.floor(w))
-        if (mw === widthRef.current) return
-        pendingWidthRef.current = mw
-        if (!widthUpdateScheduledRef.current) {
-          widthUpdateScheduledRef.current = true
-          raf(() => {
-            widthUpdateScheduledRef.current = false
-            const next = pendingWidthRef.current
-            pendingWidthRef.current = null
-            if (typeof next === 'number' && next !== widthRef.current) {
-              widthRef.current = next
-              setWidth(next)
-            }
-          })
+  function defaultApplyStyle(el: HTMLElement, style: React.CSSProperties | undefined) {
+    if (!style) return
+    for (const [key, val] of Object.entries(style)) {
+      try {
+        if (key.startsWith('--')) {
+          el.style.setProperty(key, String(val))
+        } else {
+          const prop = key.replace(/[A-Z]/g, (m) => '-' + m.toLowerCase())
+          el.style.setProperty(prop, val == null ? '' : String(val))
         }
-      })
-
-      return () => {
-        disposeWidth?.()
+      } catch {
+        // noop
       }
-    }, [requestCompute])
+    }
+  }
 
-    // Keep latest computeLayout in a ref so requestCompute always uses fresh closure values
-    useLayoutEffect(() => {
-      computeLayoutRef.current = computeLayout
-    })
-
-    // Minimal registry implementation retained for compatibility with children,
-    // but all reads happen via DOM queries inside computeLayout.
-    const registry = useMemo<GridRegistry>(
-      () => ({
-        addCell(entry) {
-          cellsRef.current.push(entry)
-          requestCompute()
-        },
-        removeCell(entry) {
-          cellsRef.current = cellsRef.current.filter((e) => e !== entry)
-          requestCompute()
-        },
-        requestCompute,
-        getGridRef() {
-          return gridRef.current
-        },
-        getPositionFor(el: HTMLElement | null) {
-          return el ? positionsRef.current.get(el) : undefined
-        },
-        layoutVersion,
-      }),
-      [requestCompute, layoutVersion],
-    )
-
-    // Fire initial compute after children have had a chance to register:
-    // defer to next microtask and then next animation frame
-    useLayoutEffect(() => {
-      requestCompute()
-    }, [])
-    // Recompute when width changes: coalesce via RAF and dedupe if same width
-    useLayoutEffect(() => {
-      if (width <= 0) return
-      if (width === lastComputedWidthRef.current) return
-      raf(() => {
-        requestCompute()
-      })
-    }, [width, requestCompute])
-    // Recompute when className/style change (e.g., CSS var changes)
-    useLayoutEffect(() => {
-      raf(() => {
-        requestCompute()
-      })
-    }, [className, style, requestCompute])
-
-    function readGridInputs(el: HTMLElement | null): {
-      cw?: number
-      gap: number
-      horizontalOrder: boolean
-    } {
-      if (!el) return { gap: 0, horizontalOrder: false }
-      // Support px or unitless values and common aliases
-      const cw = getCssNumber(el, '--mk-column-width', '--mk-cw', '--mk-cell-width')
-      const gap = getCssNumber(el, '--mk-gap', '--mk-cell-gap') ?? 0
-      const horiz = getCssNumber(el, '--mk-horizontal-order') ?? 0
-      const out: { cw?: number; gap: number; horizontalOrder: boolean } = {
-        gap,
-        horizontalOrder: horiz > 0.5,
-      }
-      if (typeof cw === 'number') out.cw = cw
-      return out
+  // Apply geometry from hook-computed layout
+  useIsomorphicLayoutEffect(() => {
+    const root = rootRef.current
+    if (!root) return
+    if (!cells || cells.length === 0) {
+      root.style.height = '0px'
+      return
     }
 
-    function computeLayout() {
-      const root = gridRef.current
-      if (!root) return
-      const containerWidth = width
-      if (containerWidth <= 0) {
-        // Attempt a fallback measurement to trigger first compute if possible
-        const fallback = root.clientWidth
-        if (fallback > 0) {
-          const mw = Math.max(0, Math.floor(fallback))
-          setWidth(mw)
-        }
-        return
-      }
+    if (layout.grid.width <= 0) return
 
-      const gridInputs = readGridInputs(root)
-      const desiredCw = gridInputs.cw
-      const desiredGap = gridInputs.gap
-
-      // Resolve columns with current width and desired values
-      const columnsInput: { gridWidth: number; gap?: number; columnWidth?: number } = {
-        gridWidth: containerWidth,
-        gap: desiredGap,
-      }
-      if (typeof desiredCw === 'number') {
-        columnsInput.columnWidth = desiredCw
-      }
-      const resolved = computeColumns(columnsInput)
-
-      // Build cells using the React registry entries
-      const items = cellsRef.current.map((entry) => {
-        const inputs = entry.readInputs()
-        const out: any = {
-          id: String(entry.id),
-          columnSpan: inputs.span,
-          meta: undefined as unknown as never,
-        }
-        if (typeof inputs.height === 'number') {
-          out.height = Math.max(0, inputs.height)
-        } else if (typeof inputs.aspectRatio === 'number' && inputs.aspectRatio > 0) {
-          out.aspectRatio = inputs.aspectRatio
-        }
-        return out
-      })
-
-      const stampsPxFromProps = (stamps ?? [])
-        .map((s) => ({
-          x: Math.round(s.x),
-          y: Math.round(s.y),
-          width: Math.max(0, Math.round(s.width)),
-          height: Math.max(0, Math.round(s.height)),
-        }))
-        .filter((s) => s.width > 0 && s.height > 0)
-
-      const stampsColsFromProps = (stampsCols ?? [])
-        .map((s) => {
-          const startCol = Math.max(0, Math.floor(s.startCol))
-          const span = Math.max(1, Math.floor(s.span))
-          const top = Math.max(0, Math.floor(s.top))
-          const h = Math.max(0, Math.floor(s.height))
-          const x = Math.round(startCol * (resolved.columnWidth + resolved.gap))
-          const width = Math.round(span * resolved.columnWidth + (span - 1) * resolved.gap)
-          return { x, y: top, width, height: h }
-        })
-        .filter((s) => s.width > 0 && s.height > 0)
-
-      const mergedStamps = ([] as MasonryStamp[])
-        .concat(stampsPxFromProps)
-        .concat(stampsColsFromProps)
-
-      /* */
-      const layout = computeMasonryLayout(items, {
-        gridWidth: containerWidth,
-        gap: resolved.gap,
-        columnWidth: resolved.columnWidth,
-        horizontalOrder: gridInputs.horizontalOrder,
-        ...(mergedStamps.length ? { stamps: mergedStamps } : {}),
-      })
-
-      // Write grid height
-      root.style.setProperty('--mk-grid-height', `${layout.grid.height}px`)
-
-      // Update positions map and optionally write inline styles directly (renderless DOM mode)
-      positionsRef.current = new Map()
-      layout.cells.forEach((cell: MasonryLayoutCell<any>, index: number) => {
-        const el = cellsRef.current[index]?.ref.current
-        if (!el) return
-        if (applyInlineStyles === 'dom') {
-          el.style.setProperty('--mk-cell-x', `${cell.x}px`)
-          el.style.setProperty('--mk-cell-y', `${cell.y}px`)
-          el.style.setProperty('--mk-cell-width', `${cell.width}px`)
-          el.style.setProperty('--mk-cell-height', `${cell.height}px`)
-          el.style.setProperty('--mk-cell-column', `${cell.column}`)
-          el.style.setProperty('--mk-cell-span', `${cell.span}`)
-          el.style.setProperty('--mk-cell-index', `${cell.index}`)
-        }
-        positionsRef.current.set(el, cell as MasonryLayoutCell<any>)
-      })
-      lastComputedWidthRef.current = containerWidth
-      if (applyInlineStyles === 'react') {
-        setLayoutVersion((v) => v + 1)
-      }
-      const result = layout as MasonryLayoutResult<any>
-      if (onLayout) onLayout(result)
+    // Optionally let consumer set grid-level styles (e.g., height)
+    if (setGridStyle) {
+      const gs = setGridStyle(layout.grid, { layout })
+      // Merge user-provided static gridStyle with dynamic styles before applying
+      const mergedGridStyle: React.CSSProperties = { ...(gridStyle || {}), ...(gs || {}) }
+      ;(applyStyleProp ?? defaultApplyStyle)(root, mergedGridStyle)
+    } else if (gridStyle) {
+      // Apply static gridStyle if provided
+      ;(applyStyleProp ?? defaultApplyStyle)(root, gridStyle)
     }
 
-    // Class for position mode
+    // Let consumer write per-cell geometry
+    for (const cell of layout.cells) {
+      const cellData = cells[cell.index]!
+      const key = (keyForCell?.(cellData, cell.index) ??
+        (cellData.id != null ? String(cellData.id) : String(cell.index))) as string
+      const node = nodesRef.current.get(key)
+      if (!node) continue
 
-    return (
-      <GridContext.Provider value={registry}>
-        <As ref={setGridRef} className={className} style={style}>
-          {children}
-        </As>
-      </GridContext.Provider>
-    )
-  }),
-)
+      const cs = setCellStyle(
+        { x: cell.x, y: cell.y, width: cell.width, height: cell.height },
+        { index: cell.index, cell: cellData, layout },
+      )
+      // Merge user-provided static cellStyle with dynamic styles before applying
+      const mergedCellStyle: React.CSSProperties = { ...(cellStyle || {}), ...(cs || {}) }
+      ;(applyStyleProp ?? defaultApplyStyle)(node, mergedCellStyle)
+    }
+  }, [layout, cells, keyForCell, setCellStyle, setGridStyle])
 
-/* ---------------------------------- Cell ----------------------------------- */
-
-/** @public */
-/** @public */
-export type CellProps = {
-  as?: React.ElementType
-  className?: string
-  style?: React.CSSProperties
-  children?: React.ReactNode
-  /**
-   * Optional marker class to allow DOM queries to find cells.
-   * Defaults to 'mk-cell' if not provided.
-   */
-  markerClassName?: string
-  /**
-   * Provide dynamic styles based on computed position. Return any CSS properties
-   * (including CSS custom properties) to be merged into the element's inline style.
-   */
-  setDynamicStyle?: (ctx: {
-    cell: MasonryLayoutCell<any>
-    index: number
-    column: number
-    span: number
-  }) => React.CSSProperties
-}
-
-/** @public */
-/** @public */
-export const Cell = memo(
-  forwardRef<HTMLElement, CellProps>(function Cell(props, forwardedRef) {
-    const {
-      as: As = 'div',
-      className,
-      style,
-      children,
-      markerClassName = 'mk-cell',
-      setDynamicStyle,
-    } = props
-    const grid = useGridRegistry()
-    const ref = useRef<HTMLElement | null>(null)
-    const idRef = useRef<number | null>(null)
-
-    // Expose ref via callback ref
-    const setCellRef = useCallback(
-      (node: HTMLElement | null) => {
-        ref.current = node
-        setRef(forwardedRef, node)
-      },
-      [forwardedRef],
-    )
-
-    const _readInputs = useCallback(() => {
-      const el = ref.current
-      if (!el) return { span: 1 } as const
-      const span = Math.max(1, Math.floor(getCssNumber(el, '--mk-cell-span') ?? 1))
-      const height = getCssNumber(el, '--mk-cell-height')
-      const aspectRatio =
-        height == null ? getCssNumber(el, '--mk-cell-aspect-ratio') : undefined /* height wins */
-      return {
-        span,
-        ...(height != null ? { height } : {}),
-        ...(aspectRatio != null ? { aspectRatio } : {}),
-      }
-    }, [])
-
-    // Register with Grid (layout effect to ensure registry available before compute)
-    useLayoutEffect(() => {
-      const id = idRef.current ?? gridIdNext(grid)
-      idRef.current = id
-      const entry: _RegisteredCell = { id, ref, readInputs: _readInputs }
-      grid.addCell(entry)
-      return () => grid.removeCell(entry)
-    }, [])
-
-    // Merge static style and dynamic style (if provided). No base positioning is applied by default.
-
-    const cell = grid.getPositionFor(ref.current)
-
-    // Always expose computed geometry via CSS vars on the element's style prop.
-    // Allow setDynamicStyle to augment/override if provided.
-    const baseDynamic: React.CSSProperties = cell
-      ? ({
-          ['--mk-cell-x']: `${cell.x}px`,
-          ['--mk-cell-y']: `${cell.y}px`,
-          ['--mk-cell-width']: `${cell.width}px`,
-          ['--mk-cell-height']: `${cell.height}px`,
-          ['--mk-cell-column']: `${cell.column}`,
-          ['--mk-cell-span']: `${cell.span}`,
-          ['--mk-cell-index']: `${cell.index}`,
-        } as React.CSSProperties)
-      : {}
-
-    const extraDynamic: React.CSSProperties =
-      cell && setDynamicStyle
-        ? setDynamicStyle({
-            cell: cell,
-            index: cell.index,
-            column: cell.column,
-            span: cell.span,
-          })
-        : ({} as React.CSSProperties)
-
-    const mergedStyle: React.CSSProperties = useMemo(
-      () => ({
-        ...(style ?? {}),
-        ...baseDynamic,
-        ...extraDynamic,
-      }),
-      // Include layoutVersion so Cells re-render styles right after a new layout
-      [style, grid.layoutVersion],
-    )
-
-    /* */
-
-    return (
-      <As
-        ref={setCellRef}
-        className={Array.from(
-          new Set([markerClassName, className].filter((v): v is string => !!v)),
-        ).join(' ')}
-        style={mergedStyle}
-      >
-        {children}
-      </As>
-    )
-  }),
-)
-
-/* --------------------------------- Helpers --------------------------------- */
-
-function gridIdNext(_grid: GridRegistry): number {
-  // We rely on closure-local nextIdRef inside Grid, but here we cannot access it.
-  // Instead, we generate per-add unique ids by using timestamp + random.
-  // For deterministic order across a single render, the order in cellsRef is stable.
-  // The exact id value is opaque to consumers; it only needs to be unique in the current grid.
-  return Number(
-    `${Date.now()}${Math.floor(Math.random() * 1_000_000)
-      .toString()
-      .padStart(6, '0')}`,
+  return (
+    <div
+      {...gridProps}
+      ref={rootRef}
+      className={[gridProps?.className, gridClassName].filter(Boolean).join(' ')}
+      style={{ ...(gridProps?.style || {}), ...(gridStyle || {}) }}
+    >
+      {cells.map((cell, index) => {
+        const key = keyFn(cell, index)
+        return (
+          <div key={key} ref={setCellRefForKey(key)} className={cellClassName} style={cellStyle}>
+            {renderCell(cell, index)}
+          </div>
+        )
+      })}
+    </div>
   )
 }
 
-/* --------------------------------- Exports --------------------------------- */
+/* Masonry is exported as the primary API above */
 
-export type { MasonryLayoutCell, MasonryStamp, MasonryLayoutResult }
+export type MasonryListProps<T> = {
+  data: readonly T[]
+  getCell: (
+    item: T,
+    index: number,
+    array: readonly T[],
+  ) => {
+    id?: string
+    height?: number
+    aspectRatio?: number
+    columnSpan?: number
+  }
+  renderCell: (item: T, index: number) => React.ReactNode
+  keyForItem?: (item: T, index: number) => string
+} & Omit<MasonryProps<T>, 'cells' | 'renderCell' | 'keyForCell'>
+
+export function MasonryList<T>(props: MasonryListProps<T>) {
+  const { data, getCell, renderCell: renderDataCell, keyForItem, ...rest } = props
+
+  const cells = useMemo(() => {
+    return data.map((d, i, arr) => {
+      const base =
+        getCell(d, i, arr) ??
+        ({} as { id?: string; height?: number; aspectRatio?: number; columnSpan?: number })
+      const hasHeight = typeof base.height === 'number'
+      const hasAspect = typeof base.aspectRatio === 'number'
+      const cell: MasonryCellInput<T> = {
+        ...(base.id != null ? { id: base.id } : {}),
+        ...(base.columnSpan != null ? { columnSpan: base.columnSpan } : {}),
+        ...(hasHeight
+          ? { height: base.height as number }
+          : hasAspect
+            ? { aspectRatio: base.aspectRatio as number }
+            : { height: 0 }),
+        meta: d,
+      }
+      return cell
+    })
+  }, [data, getCell])
+
+  return (
+    <Masonry<T>
+      {...rest}
+      cells={cells}
+      renderCell={(_cell, index) => renderDataCell(data[index]!, index)}
+      keyForCell={(cell, index) =>
+        keyForItem ? keyForItem(data[index]!, index) : (cell.id ?? String(index))
+      }
+    />
+  )
+}
+
+// Convenience writer with practical --mk-* defaults
+
+export function cssVarWriter() {
+  return (geom: { x: number; y: number; width: number; height: number }, _ctx?: unknown) =>
+    ({
+      '--mk-cell-x': `${geom.x}px`,
+      '--mk-cell-y': `${geom.y}px`,
+      '--mk-cell-width': `${geom.width}px`,
+      '--mk-cell-height': `${geom.height}px`,
+    }) as React.CSSProperties
+}

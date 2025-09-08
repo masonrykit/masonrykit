@@ -58,6 +58,9 @@ export default [
           jsx: true,
         },
       },
+      globals: {
+        React: 'readonly',
+      },
     },
     plugins: {
       '@typescript-eslint': tsPlugin,
@@ -65,6 +68,8 @@ export default [
     rules: {
       // Prefer TS rules over JS equivalents
       'no-unused-vars': 'off',
+      // TS handles undefined variables and type-only imports; avoid false positives
+      'no-undef': 'off',
       '@typescript-eslint/no-unused-vars': [
         'error',
         {
@@ -79,6 +84,8 @@ export default [
         'error',
         { prefer: 'type-imports', fixStyle: 'inline-type-imports' },
       ],
+      // Ensure type-only imports have no side effects
+      '@typescript-eslint/no-import-type-side-effects': 'error',
 
       // Useful correctness rules
       '@typescript-eslint/no-require-imports': 'error',

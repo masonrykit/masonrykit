@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react'
 import { createRoot } from 'react-dom/client'
-import * as Masonry from '@masonrykit/react'
+import { Masonry, cssVarWriter } from '@masonrykit/react'
 
 import './style.css'
 
@@ -70,7 +70,6 @@ function App() {
   const [preset, setPreset] = useState<PresetName>('Custom')
   const [items, setItems] = useState<DemoItem[]>(() => makeDemoItems(28))
   const [itemsCount, setItemsCount] = useState<number>(28)
-  const gridRef = React.useRef<HTMLElement | null>(null)
 
   const applyPreset = (name: PresetName) => {
     if (name !== 'Custom') {
@@ -280,62 +279,73 @@ function App() {
           </div>
         </section>
 
-        <Masonry.Grid
-          ref={gridRef}
-          className="relative w-full min-h-80 h-[var(--mk-grid-height)] border border-slate-800/50 rounded-xl p-4 bg-white/5 transition-all duration-[var(--mk-app-transition-duration)] ease-[var(--mk-app-transition-easing)]"
-          style={
+        <Masonry
+          cells={items.map((d) =>
+            d.height != null
+              ? ({
+                  id: d.id,
+                  height: d.height,
+                  columnSpan: d.columnSpan ?? 1,
+                  meta: d.meta,
+                } as const)
+              : d.aspectRatio != null
+                ? ({
+                    id: d.id,
+                    aspectRatio: d.aspectRatio,
+                    columnSpan: d.columnSpan ?? 1,
+                    meta: d.meta,
+                  } as const)
+                : ({
+                    id: d.id,
+                    height: 0,
+                    columnSpan: d.columnSpan ?? 1,
+                    meta: d.meta,
+                  } as const),
+          )}
+          gap={gap}
+          columnWidth={columnWidth}
+          horizontalOrder={horizontalOrder}
+          stampsCols={
+            useStamps
+              ? [
+                  { startCol: 0, span: 4, top: 0, height: 14 },
+                  { startCol: 1, span: 1, top: 10, height: 30 },
+                ]
+              : []
+          }
+          setCellStyle={cssVarWriter()}
+          setGridStyle={(grid) =>
+            ({ ['--mk-grid-height']: `${grid.height}px` }) as React.CSSProperties
+          }
+          gridClassName="relative w-full min-h-80 h-[var(--mk-grid-height)] border border-slate-800/50 rounded-xl p-4 bg-white/5 transition-all duration-[var(--mk-app-transition-duration)] ease-[var(--mk-app-transition-easing)]"
+          gridStyle={
             {
               ['--mk-app-transition-duration']: `${duration}ms`,
               ['--mk-app-transition-easing']: 'ease',
-              ['--mk-column-width']: `${columnWidth}`,
-              ['--mk-gap']: `${gap}px`,
-              ['--mk-horizontal-order']: horizontalOrder ? 1 : 0,
               ['--mk-use-transform']: useGpu ? 1 : 0,
             } as React.CSSProperties
           }
-          {...(useStamps
-            ? {
-                stampsCols: [
-                  { startCol: 0, span: 4, top: 0, height: 14 },
-                  { startCol: 1, span: 1, top: 10, height: 30 },
-                ],
-              }
-            : {})}
-        >
-          {items.map((item) => (
-            <Masonry.Cell
-              key={item.id}
-              className="absolute box-border w-[var(--mk-cell-width)] h-[var(--mk-cell-height)] left-[calc((1-var(--mk-use-transform,1))*var(--mk-cell-x))] top-[calc((1-var(--mk-use-transform,1))*var(--mk-cell-y))] translate-x-[calc(var(--mk-use-transform,1)*var(--mk-cell-x))] translate-y-[calc(var(--mk-use-transform,1)*var(--mk-cell-y))] transform transition-all duration-[var(--mk-app-transition-duration)] ease-[var(--mk-app-transition-easing)] [will-change:left,top,width,height,transform]"
-              style={
-                {
-                  ['--mk-cell-span']: item.columnSpan,
-                  ['--mk-cell-height']: item.height !== undefined ? `${item.height}px` : undefined,
-                  ['--mk-cell-aspect-ratio']:
-                    item.height === undefined ? item.aspectRatio : undefined,
-                } as React.CSSProperties
-              }
-            >
-              <div className="absolute inset-0 overflow-hidden rounded-md">
-                <div className="absolute inset-0 block rounded-md bg-slate-800/30 dark:bg-slate-800/50">
-                  {showPhotos ? (
-                    <img
-                      className="w-full h-full object-cover rounded-md transition-transform duration-[var(--mk-app-transition-duration)] ease-[var(--mk-app-transition-easing)]"
-                      src={item.meta.src}
-                      alt={item.id}
-                      loading="lazy"
-                    />
-                  ) : (
-                    <div className="w-full h-full rounded-md border border-slate-700/50 text-slate-100 flex items-center justify-center font-extrabold tracking-wide select-none bg-white/5">
-                      {item.id}
-                    </div>
-                  )}
-                </div>
+          cellClassName="absolute box-border w-[var(--mk-cell-width)] h-[var(--mk-cell-height)] left-[calc((1-var(--mk-use-transform,1))*var(--mk-cell-x))] top-[calc((1-var(--mk-use-transform,1))*var(--mk-cell-y))] translate-x-[calc(var(--mk-use-transform,1)*var(--mk-cell-x))] translate-y-[calc(var(--mk-use-transform,1)*var(--mk-cell-y))] transform transition-all duration-[var(--mk-app-transition-duration)] ease-[var(--mk-app-transition-easing)] [will-change:left,top,width,height,transform]"
+          renderCell={(cell) => (
+            <div className="absolute inset-0 overflow-hidden rounded-md">
+              <div className="absolute inset-0 block rounded-md bg-slate-800/30 dark:bg-slate-800/50">
+                {showPhotos ? (
+                  <img
+                    className="w-full h-full object-cover rounded-md transition-transform duration-[var(--mk-app-transition-duration)] ease-[var(--mk-app-transition-easing)]"
+                    src={cell.meta.src}
+                    alt={cell.id}
+                    loading="lazy"
+                  />
+                ) : (
+                  <div className="w-full h-full rounded-md border border-slate-700/50 text-slate-100 flex items-center justify-center font-extrabold tracking-wide select-none bg-white/5">
+                    {cell.id}
+                  </div>
+                )}
               </div>
-            </Masonry.Cell>
-          ))}
-
-          <div className="absolute right-2 bottom-2 text-xs rounded px-2 py-1 border border-white/10 bg-black/50">{`Items: ${items.length}`}</div>
-        </Masonry.Grid>
+            </div>
+          )}
+          keyForCell={(cell) => cell.id ?? ''}
+        />
       </div>
     </main>
   )

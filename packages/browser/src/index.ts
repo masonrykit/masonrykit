@@ -1,15 +1,12 @@
 /**
  * @masonrykit/browser
  *
- * This package now re-exports the core math and helpers from @masonrykit/core.
- * Use this entry when you specifically want a browser-targeted build artifact.
+ * Browser-only helpers for MasonryKit.
  *
  * Exports include:
- * - computeColumns
- * - computeMasonryLayout
  * - observeElementWidth (SSR-safe; no-ops outside browser)
- * - Types: MasonryItemInput, MasonryOptions, MasonryLayoutResult, etc.
- * - VERSION
+ * - raf (requestAnimationFrame wrapper)
+ * - parseCssNumber, getCssNumber
  */
 
 export * from '@masonrykit/core'
@@ -64,8 +61,9 @@ export function observeElementWidth(
 
 /**
  * Tiny requestAnimationFrame wrapper to coalesce rapid calls.
+ * @public
  */
-function raf(fn: () => void) {
+export function raf(fn: () => void) {
   if (typeof window === 'undefined' || !('requestAnimationFrame' in window)) {
     fn()
     return
@@ -74,20 +72,31 @@ function raf(fn: () => void) {
 }
 
 /**
- * Version of the library at build time. Replaced via bundler define.
- * Falls back to process.env when available, otherwise a neutral default.
- *
+ * Parse a CSS number from a string value. Returns undefined if the value
+ * is not a finite number.
  * @public
  */
-declare const __MK_VERSION__: string | undefined
-declare const process:
-  | undefined
-  | {
-      env?: {
-        MASONRYKIT_VERSION?: string
-      }
-    }
-export const VERSION: string =
-  typeof __MK_VERSION__ !== 'undefined'
-    ? __MK_VERSION__
-    : (typeof process !== 'undefined' && process.env?.MASONRYKIT_VERSION) || '0.0.0'
+export function parseCssNumber(v: string | null | undefined): number | undefined {
+  if (!v) return undefined
+  const n = parseFloat(String(v).trim())
+  return Number.isFinite(n) ? n : undefined
+}
+
+/**
+ * Read the first defined numeric CSS custom property from the element.
+ * Supports unitless or px values (e.g. "12" or "12px").
+ * Returns undefined if none are valid numbers.
+ * @public
+ */
+export function getCssNumber(el: Element, ...names: string[]): number | undefined {
+  if (typeof window === 'undefined') return undefined
+  const cs = window.getComputedStyle(el as Element)
+  for (const name of names) {
+    const v = cs.getPropertyValue(name)
+    const n = parseCssNumber(v)
+    if (typeof n === 'number') return n
+  }
+  return undefined
+}
+
+// VERSION is re-exported from @masonrykit/core

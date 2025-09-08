@@ -2,25 +2,22 @@ import React, { useMemo } from 'react'
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import { createRoot, type Root } from 'react-dom/client'
 
-// Import from source to ensure we test local package code
-import { Grid, Cell, cssVars } from '../src/index'
-import { useMasonry } from '../src/useMasonry'
-import type { MasonryCellInput } from '@masonrykit/core'
+import { Masonry, useMasonry, cssVarWriter } from '../src/index'
+import type { MasonryCellInput } from '@masonrykit/browser'
 
 function nextFrame(): Promise<void> {
   return new Promise((resolve) => {
-    // Two rafs to allow effects + measurements to settle
     requestAnimationFrame(() => requestAnimationFrame(() => resolve()))
   })
 }
 
-describe('@masonrykit/react integration', () => {
+describe('@masonrykit/react integration (new API)', () => {
   let container: HTMLElement
   let root: Root | null = null
 
   beforeEach(() => {
     container = document.createElement('div')
-    // Keep container visible to ensure getBoundingClientRect has a width
+    // Keep container visible to ensure getBoundingClientRect has a width (when needed)
     container.style.position = 'absolute'
     container.style.left = '0'
     container.style.top = '0'
@@ -31,7 +28,6 @@ describe('@masonrykit/react integration', () => {
 
   afterEach(() => {
     if (root) {
-      // Unmount and cleanup container after each test
       root.unmount()
       root = null
     }
@@ -40,19 +36,30 @@ describe('@masonrykit/react integration', () => {
     }
   })
 
-  it('Grid + Cell render and compute CSS variables (smoke)', async () => {
-    // Provide CSS variables the Grid expects to read: --mk-column-width and --mk-gap
-    const gridStyle: React.CSSProperties = {
-      width: '800px',
-      ...cssVars({ columnWidth: 200, gap: 12 }),
-    }
+  it('Masonry renders and applies --mk-cell-* variables via cssVarWriter (smoke)', async () => {
+    const cells: ReadonlyArray<MasonryCellInput<undefined>> = [
+      { id: 'a', height: 100 },
+      { id: 'b', aspectRatio: 1 },
+      { id: 'c', height: 50 },
+    ]
 
     root!.render(
-      <Grid className="mk-grid" style={gridStyle}>
-        <Cell className="mk-cell" style={cssVars({ height: 100 })} />
-        <Cell className="mk-cell" style={cssVars({ aspectRatio: 1 })} />
-        <Cell className="mk-cell" style={cssVars({ height: 50 })} />
-      </Grid>,
+      <Masonry
+        cells={cells}
+        // Provide explicit width (no measuring needed)
+        width={800}
+        gap={12}
+        columnWidth={200}
+        horizontalOrder={false}
+        setCellStyle={cssVarWriter()}
+        // Apply grid height via CSS var for convenience (optional)
+        setGridStyle={(grid) => ({ ['--mk-grid-height' as any]: `${grid.height}px` })}
+        // Stable classes for testing queries
+        gridClassName="mk-grid"
+        cellClassName="mk-cell"
+        // Basic render function
+        renderCell={(cell) => <div>{cell.id}</div>}
+      />,
     )
 
     await nextFrame()
@@ -60,36 +67,28 @@ describe('@masonrykit/react integration', () => {
     const gridEl = container.querySelector('.mk-grid') as HTMLElement | null
     expect(gridEl).toBeTruthy()
 
-    // Wait for Grid to compute and write CSS variables
-    for (let i = 0; i < 10; i++) {
-      const val = getComputedStyle(gridEl!).getPropertyValue('--mk-grid-height').trim()
-      if (val) break
-      await nextFrame()
-    }
+    // Wait a couple frames for layout/style application to settle
+    await nextFrame()
+    await nextFrame()
 
-    // Grid writes --mk-grid-height as an output variable
-    const gridHeightVar = getComputedStyle(gridEl!).getPropertyValue('--mk-grid-height').trim()
-    expect(gridHeightVar).toBeTruthy()
+    // Collect cells and assert presence of CSS variables
+    const cellEls = Array.from(container.querySelectorAll('.mk-cell')) as HTMLElement[]
+    expect(cellEls.length).toBe(3)
 
-    const cells = Array.from(container.querySelectorAll('.mk-cell')) as HTMLElement[]
-    expect(cells.length).toBe(3)
-
-    // Cells should receive computed CSS variables for position/size
-    // We check a few representative properties to avoid coupling to exact naming
     const requiredCellVars = ['--mk-cell-x', '--mk-cell-y', '--mk-cell-width', '--mk-cell-height']
-    for (const cell of cells) {
+    for (const el of cellEls) {
       for (const v of requiredCellVars) {
-        const value = getComputedStyle(cell).getPropertyValue(v).trim()
+        const value = getComputedStyle(el).getPropertyValue(v).trim()
         expect(value, `expected ${v} to be set`).toBeTruthy()
       }
     }
 
     // Additionally assert numeric values for width/height derived from inputs
-    const widths = cells.map((cell) =>
-      parseInt(getComputedStyle(cell).getPropertyValue('--mk-cell-width').trim(), 10),
+    const widths = cellEls.map((el) =>
+      parseInt(getComputedStyle(el).getPropertyValue('--mk-cell-width').trim(), 10),
     )
-    const heights = cells.map((cell) =>
-      parseInt(getComputedStyle(cell).getPropertyValue('--mk-cell-height').trim(), 10),
+    const heights = cellEls.map((el) =>
+      parseInt(getComputedStyle(el).getPropertyValue('--mk-cell-height').trim(), 10),
     )
 
     // All widths should be positive integers
@@ -102,10 +101,9 @@ describe('@masonrykit/react integration', () => {
     expect(heights).toEqual([100, 259, 50])
   })
 
-  it('useMasonry computes a layout given explicit gridWidth (smoke)', async () => {
+  it('useMasonry computes a layout given explicit width (smoke)', async () => {
     type Meta = { tag: string }
 
-    // Build a tiny probe component that exposes computed layout via data-attributes
     function HookProbe() {
       const items = useMemo<ReadonlyArray<MasonryCellInput<Meta>>>(
         () => [
@@ -118,11 +116,12 @@ describe('@masonrykit/react integration', () => {
 
       const { ref, layout } = useMasonry(items, {
         // Provide explicit width so the hook avoids ResizeObserver in tests
-        gridWidth: 400,
+        width: 400,
         gap: 10,
         columnWidth: 180,
         horizontalOrder: false,
-        cssVars: false,
+        stamps: undefined,
+        stampsCols: undefined,
       })
 
       return (
@@ -145,9 +144,8 @@ describe('@masonrykit/react integration', () => {
     const gridHeight = Number(probe!.dataset.height)
     const cellsCount = Number(probe!.dataset.cells)
 
-    // Given gridWidth=400, gap=10, and desired columnWidth=180:
+    // Given width=400, gap=10, and desired columnWidth=180:
     // cols = floor((400 + 10) / (180 + 10)) = floor(410/190) = 2
-    // Ensure we have at least 1 column
     expect(colCount).toBeGreaterThanOrEqual(1)
     expect(colCount).toBe(2)
 

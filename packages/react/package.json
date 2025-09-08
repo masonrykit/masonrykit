@@ -20,11 +20,6 @@
       "require": "./dist/index.cjs",
       "default": "./dist/index.js"
     },
-    "./useMasonry": {
-      "types": "./dist/useMasonry.d.ts",
-      "import": "./dist/useMasonry.js",
-      "require": "./dist/useMasonry.cjs"
-    },
     "./package.json": "./package.json"
   },
   "files": [
@@ -47,7 +42,7 @@
     "react-dom": "^18.2.0 || ^19.0.0-0"
   },
   "dependencies": {
-    "@masonrykit/core": "workspace:*"
+    "@masonrykit/browser": "workspace:*"
   },
   "devDependencies": {
     "@vitest/ui": "3.2.4",

@@ -20,6 +20,11 @@
       "require": "./dist/index.cjs",
       "default": "./dist/index.js"
     },
+    "./observeElementWidth": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    },
     "./package.json": "./package.json"
   },
   "files": [

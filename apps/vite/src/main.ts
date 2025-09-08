@@ -19,10 +19,11 @@ if (!root) {
 }
 
 // Remove previous app root if any (idempotent mount)
-const prevAppRoot = root.querySelector('.mk-app-root')
+const prevAppRoot = root.querySelector('.app-root')
 if (prevAppRoot) prevAppRoot.remove()
 const main = document.createElement('main')
-main.classList.add('mk-app-root')
+main.className =
+  'app-root min-h-screen bg-gradient-to-b from-slate-900 via-slate-950 to-black text-slate-100'
 const header = document.createElement('header')
 const title = document.createElement('div')
 const subtitle = document.createElement('div')
@@ -57,17 +58,18 @@ const inputStamps = document.createElement('input')
 const grid = document.createElement('div')
 
 // IDs and attributes similar to the static HTML version
-grid.className = 'mk-app-grid'
+grid.className =
+  'relative w-full min-h-80 h-[var(--mk-grid-h)] border border-slate-800/50 rounded-xl p-4 bg-white/5 transition-all duration-[var(--mk-app-transition-duration)] ease-[var(--mk-app-transition-easing)]'
 
 // Compose DOM
-title.className = 'title'
+title.className = 'text-lg font-extrabold tracking-tight mt-1'
 title.textContent = 'MasonryKit — Vite Vanilla Playground'
-subtitle.className = 'subtitle'
+subtitle.className = 'text-sm opacity-80 mt-1'
 subtitle.innerHTML =
   'Using <code>@masonrykit/browser</code> directly to render a masonry layout for quick visual testing.'
-page.className = 'page mk-app-page'
-topbar.className = 'mk-app-topbar'
-brand.className = 'mk-app-brand'
+page.className = 'max-w-6xl mx-auto px-4 py-5'
+topbar.className = 'flex items-center justify-between'
+brand.className = 'font-extrabold tracking-tight'
 
 // Topbar (brand + quick actions)
 
@@ -77,12 +79,15 @@ brand.textContent = 'MasonryKit'
 
 // Theme toggle (Midnight/Aurora)
 topbar.appendChild(brand)
+header.className =
+  'sticky top-0 z-10 backdrop-blur bg-slate-900/70 border-b border-white/10 px-5 py-4 mb-4'
 header.appendChild(topbar)
 
 header.appendChild(title)
 header.appendChild(subtitle)
 
-controls.className = 'controls mk-app-controls'
+controls.className =
+  'flex flex-wrap items-start gap-x-4 gap-y-3 mb-4 p-3 rounded-md border border-slate-700/40 shadow-sm bg-white/5'
 
 // Column width control
 labelCol.appendChild(document.createTextNode('Column width: '))
@@ -134,10 +139,9 @@ controls.appendChild(labelDur)
 // Positioning mode (GPU transforms vs top/left)
 inputPos.type = 'checkbox'
 inputPos.checked = true
-inputPos.className = 'mk-check'
-labelPos.style.display = 'inline-flex'
-labelPos.style.alignItems = 'center'
-labelPos.style.gap = '6px'
+inputPos.className = 'accent-slate-400'
+labelPos.className = 'inline-flex items-center gap-[6px]'
+
 labelPos.appendChild(inputPos)
 labelPos.appendChild(document.createTextNode('GPU transforms'))
 controls.appendChild(labelPos)
@@ -172,7 +176,7 @@ controls.appendChild(labelItems)
 // Mode toggle (photos or cards)
 inputMode.type = 'checkbox'
 inputMode.checked = true
-inputMode.className = 'mk-check mk-app-check'
+inputMode.className = 'accent-slate-400'
 
 labelMode.appendChild(inputMode)
 labelMode.appendChild(document.createTextNode('Photos'))
@@ -181,7 +185,7 @@ controls.appendChild(labelMode)
 // Stamps toggle
 inputStamps.type = 'checkbox'
 inputStamps.checked = false
-inputStamps.className = 'mk-check mk-app-check'
+inputStamps.className = 'accent-slate-400'
 labelStamps.appendChild(inputStamps)
 labelStamps.appendChild(document.createTextNode('Stamps'))
 controls.appendChild(labelStamps)
@@ -190,11 +194,13 @@ controls.appendChild(labelStamps)
 const btnAdd = document.createElement('button')
 btnAdd.type = 'button'
 btnAdd.textContent = 'Add 12'
-btnAdd.className = 'mk-button mk-app-button'
+btnAdd.className =
+  'px-3 py-2 rounded-md border border-slate-700/50 shadow-sm bg-white/5 hover:bg-white/10 transition'
 const btnReset = document.createElement('button')
 btnReset.type = 'button'
 btnReset.textContent = 'Reset'
-btnReset.className = 'mk-button mk-app-button'
+btnReset.className =
+  'px-3 py-2 rounded-md border border-slate-700/50 shadow-sm bg-white/5 hover:bg-white/10 transition'
 controls.appendChild(btnAdd)
 controls.appendChild(btnReset)
 
@@ -202,7 +208,8 @@ controls.appendChild(btnReset)
 const btnShuffle = document.createElement('button')
 btnShuffle.type = 'button'
 btnShuffle.textContent = 'Shuffle'
-btnShuffle.className = 'mk-button mk-app-button'
+btnShuffle.className =
+  'px-3 py-2 rounded-md border border-slate-700/50 shadow-sm bg-white/5 hover:bg-white/10 transition'
 btnShuffle.addEventListener('click', () => {
   const arr = items.slice()
   for (let i = arr.length - 1; i > 0; i--) {
@@ -231,9 +238,13 @@ const state = {
 }
 let items: DemoItem[] = []
 if (state.useTransform) {
-  grid.className = 'mk-app-grid mk-grid-gpu'
+  grid.className =
+    'relative w-full min-h-80 h-[var(--mk-grid-h)] border border-slate-800/50 rounded-xl p-4 bg-white/5 transition-all duration-[var(--mk-app-transition-duration)] ease-[var(--mk-app-transition-easing)]'
+  grid.style.setProperty('--mk-use-transform', '1')
 } else {
-  grid.className = 'mk-app-grid mk-grid'
+  grid.className =
+    'relative w-full min-h-80 h-[var(--mk-grid-h)] border border-slate-800/50 rounded-xl p-4 bg-white/5 transition-all duration-[var(--mk-app-transition-duration)] ease-[var(--mk-app-transition-easing)]'
+  grid.style.setProperty('--mk-use-transform', '0')
 }
 let addNonce = 0
 
@@ -244,7 +255,7 @@ const horizLabel = document.createElement('label')
 const horizInput = document.createElement('input')
 horizInput.type = 'checkbox'
 horizInput.checked = state.horizontalOrder
-horizInput.className = 'mk-check mk-app-check'
+horizInput.className = 'accent-slate-400'
 
 horizLabel.appendChild(horizInput)
 horizLabel.appendChild(document.createTextNode('Horizontal order'))
@@ -275,7 +286,13 @@ const gapValue = spanGap
 
 // Early guard no longer needed as we just created grid node
 // Cache DOM nodes for smooth transitions
-const ITEM_NODES = new Map<string, HTMLDivElement>()
+type ItemNodes = {
+  el: HTMLDivElement
+  inner: HTMLDivElement
+  content: HTMLDivElement
+  caption: HTMLDivElement
+}
+const ITEM_NODES = new Map<string, ItemNodes>()
 let INFO_NODE: HTMLDivElement | null = null
 
 // State moved above
@@ -411,67 +428,76 @@ function render(width: number): void {
     const key = item.id ?? String(cell.index)
     present.add(key)
 
-    let el = ITEM_NODES.get(key)
-    if (!el) {
-      el = document.createElement('div')
-      el.className = 'mk-cell'
+    let nodes = ITEM_NODES.get(key)
+    if (!nodes) {
+      const el = document.createElement('div')
+      el.className =
+        'absolute box-border w-[var(--mk-cell-w)] h-[var(--mk-cell-h)] left-[calc((1-var(--mk-use-transform,1))*var(--mk-cell-x))] top-[calc((1-var(--mk-use-transform,1))*var(--mk-cell-y))] translate-x-[calc(var(--mk-use-transform,1)*var(--mk-cell-x))] translate-y-[calc(var(--mk-use-transform,1)*var(--mk-cell-y))] transform transition-all duration-[var(--mk-app-transition-duration)] ease-[var(--mk-app-transition-easing)] [will-change:left,top,width,height,transform] rounded-md border border-slate-700/50 bg-white/5 shadow-sm'
       // inner wrapper for visual transforms (hover lift)
       const inner = document.createElement('div')
-      inner.className = 'mk-cell-inner'
+      inner.className = 'absolute inset-0 block'
       el.appendChild(inner)
       // content container
       const content = document.createElement('div')
-      content.className = 'mk-content mk-app-content'
+      content.className =
+        'absolute inset-0 block translate-y-[var(--mk-app-lift,0)] transition-transform duration-[var(--mk-app-transition-duration)] ease-[var(--mk-app-transition-easing)] will-change-transform'
       inner.appendChild(content)
       // caption overlay
       const caption = document.createElement('div')
-      caption.className = 'mk-caption mk-app-caption'
+      caption.className =
+        'absolute left-[calc(var(--mk-cell-gap,0px)*0.5+6px)] right-[calc(var(--mk-cell-gap,0px)*0.5+6px)] bottom-[calc(var(--mk-cell-gap,0px)*0.5+6px)] px-2 py-1 text-xs rounded bg-black/50 border border-white/10 text-slate-300 pointer-events-none'
       inner.appendChild(caption)
-      ITEM_NODES.set(key, el)
+      ITEM_NODES.set(key, { el, inner, content, caption })
+      nodes = ITEM_NODES.get(key)!
     }
     // ensure content matches mode
-    const innerNode = (el.querySelector('.mk-cell-inner') as HTMLDivElement) ?? el
-    const contentNode = innerNode.querySelector('.mk-content') as HTMLDivElement
+
+    const contentNode = nodes.content
     if (state.showPhotos) {
-      if (!contentNode.querySelector('img')) {
+      if (contentNode.getAttribute('data-mode') !== 'photo') {
         contentNode.innerHTML = ''
         const imgEl = document.createElement('img')
+        imgEl.className =
+          'w-full h-full object-cover rounded-md transition-transform duration-[var(--mk-app-transition-duration)] ease-[var(--mk-app-transition-easing)]'
         imgEl.src = item.meta.src
         imgEl.alt = (item.id ?? String(cell.index)).toString()
         imgEl.loading = 'lazy'
         contentNode.appendChild(imgEl)
+        contentNode.setAttribute('data-mode', 'photo')
       }
     } else {
-      if (!contentNode.querySelector('.mk-card')) {
+      if (contentNode.getAttribute('data-mode') !== 'card') {
         contentNode.innerHTML = ''
         const card = document.createElement('div')
-        card.className = 'mk-card mk-app-card'
+        card.className =
+          'w-full h-full rounded-md border border-slate-700/50 text-slate-100 flex items-center justify-center font-extrabold tracking-wide select-none bg-white/5'
         card.textContent = (item.id ?? String(cell.index)).toString()
         contentNode.appendChild(card)
+        contentNode.setAttribute('data-mode', 'card')
       }
     }
 
     // Use CSS variables for geometry and toggle between absolute vs transform3d
     // Update CSS variables with current geometry
-    el.style.setProperty('--mk-cell-x', `${cell.x}px`)
-    el.style.setProperty('--mk-cell-y', `${cell.y}px`)
-    el.style.setProperty('--mk-cell-w', `${cell.width}px`)
-    el.style.setProperty('--mk-cell-h', `${cell.height}px`)
+    nodes.el.style.setProperty('--mk-cell-x', `${cell.x}px`)
+    nodes.el.style.setProperty('--mk-cell-y', `${cell.y}px`)
+    nodes.el.style.setProperty('--mk-cell-w', `${cell.width}px`)
+    nodes.el.style.setProperty('--mk-cell-h', `${cell.height}px`)
     // positioning mode is handled via .mk-grid or .mk-grid-gpu in CSS
 
     // update caption on each render
-    const captionNode = el.querySelector('.mk-caption')
+    const captionNode = nodes.caption
     if (captionNode) {
       captionNode.textContent = `${key} • ${Math.round(cell.width)}×${Math.round(cell.height)}`
     }
 
-    if (!el.parentElement) grid.appendChild(el)
+    if (!nodes.el.parentElement) grid.appendChild(nodes.el)
   }
 
   // Remove stale nodes
-  for (const [key, node] of ITEM_NODES) {
+  for (const [key, nodes] of ITEM_NODES) {
     if (!present.has(key)) {
-      node.remove()
+      nodes.el.remove()
       ITEM_NODES.delete(key)
     }
   }
@@ -479,7 +505,8 @@ function render(width: number): void {
   // Footer overlay with info (reuse node)
   if (!INFO_NODE) {
     INFO_NODE = document.createElement('div')
-    INFO_NODE.className = 'mk-info mk-app-info'
+    INFO_NODE.className =
+      'absolute right-2 bottom-2 text-xs rounded px-2 py-1 border border-white/10 bg-black/50'
     grid.appendChild(INFO_NODE)
   }
   INFO_NODE.textContent = `Columns: ${layout.grid.columnCount} • ColumnWidth: ${layout.grid.columnWidth}px • Gap: ${layout.grid.gap}px • Cells: ${layout.cells.length}`
@@ -531,7 +558,7 @@ inputDur.addEventListener('input', () => {
 })
 inputPos.addEventListener('change', () => {
   state.useTransform = inputPos.checked
-  grid.className = state.useTransform ? 'mk-app-grid mk-grid-gpu' : 'mk-app-grid mk-grid'
+  grid.style.setProperty('--mk-use-transform', state.useTransform ? '1' : '0')
   requestUpdate()
 })
 inputItems.addEventListener('input', () => {
@@ -591,7 +618,7 @@ if (import.meta && import.meta.hot) {
     } catch {
       void 0
     }
-    const prev = root.querySelector('.mk-app-root') as HTMLElement | null
+    const prev = root.querySelector('.app-root') as HTMLElement | null
     if (prev) prev.remove()
   })
 }
