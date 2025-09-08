@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { computeMasonryLayout } from '../src/index'
+import type { MasonryCellInput } from '../src/index'
 
 /**
  * Gutter tests focus on spacing math for span=1 items.
@@ -18,11 +19,11 @@ describe('@masonrykit/browser - gutter spacing (span=1 items)', () => {
     const gap = 20
     const columnWidth = 60
     const items = [
-      { height: 30, meta: {} },
-      { height: 30, meta: {} },
-      { height: 30, meta: {} },
-      { height: 30, meta: {} },
-    ] as const
+      { height: 30 },
+      { height: 30 },
+      { height: 30 },
+      { height: 30 },
+    ] as const satisfies readonly MasonryCellInput[]
 
     const layout = computeMasonryLayout(items, {
       gridWidth,
@@ -56,12 +57,12 @@ describe('@masonrykit/browser - gutter spacing (span=1 items)', () => {
     const columnWidth = 60
     // Heights chosen to drive different shortest columns over time
     const items = [
-      { id: 'i0', height: 30, meta: {} },
-      { id: 'i1', height: 70, meta: {} },
-      { id: 'i2', height: 30, meta: {} },
-      { id: 'i3', height: 70, meta: {} },
-      { id: 'i4', height: 30, meta: {} },
-    ] as const
+      { id: 'i0', height: 30 },
+      { id: 'i1', height: 70 },
+      { id: 'i2', height: 30 },
+      { id: 'i3', height: 70 },
+      { id: 'i4', height: 30 },
+    ] as const satisfies readonly MasonryCellInput[]
 
     const layout = computeMasonryLayout(items, {
       gridWidth,
@@ -92,11 +93,11 @@ describe('@masonrykit/browser - gutter spacing (span=1 items)', () => {
     const columnWidth = 60
     // aspectRatio = width / height -> height = columnWidth / aspectRatio
     const items = [
-      { id: 'a', aspectRatio: 2, meta: {} }, // height = 60 / 2 = 30
-      { id: 'b', aspectRatio: 1, meta: {} }, // height = 60 / 1 = 60
-      { id: 'c', aspectRatio: 3, meta: {} }, // height = 60 / 3 = 20
-      { id: 'd', aspectRatio: 1.5, meta: {} }, // height = 60 / 1.5 = 40
-    ] as const
+      { id: 'a', aspectRatio: 2 }, // height = 60 / 2 = 30
+      { id: 'b', aspectRatio: 1 }, // height = 60 / 1 = 60
+      { id: 'c', aspectRatio: 3 }, // height = 60 / 3 = 20
+      { id: 'd', aspectRatio: 1.5 }, // height = 60 / 1.5 = 40
+    ] as const satisfies readonly MasonryCellInput[]
 
     const layout = computeMasonryLayout(items, {
       gridWidth,

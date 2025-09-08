@@ -22,7 +22,7 @@
  * Height (px) takes precedence; otherwise height is derived from aspectRatio.
  * @public
  */
-export type MasonryCellInput<M = unknown> = {
+export type MasonryCellInput<M = undefined> = {
   /**
    * Optional stable identifier for the item.
    */
@@ -34,26 +34,26 @@ export type MasonryCellInput<M = unknown> = {
   /**
    * Free-form metadata you might want to carry through the layout.
    */
-  meta: M
-} & (
-  | {
-      /**
-       * Explicit height in pixels.
-       * When provided, aspectRatio must not be specified.
-       */
-      height: number
-      aspectRatio?: never
-    }
-  | {
-      /**
-       * width / height ratio (e.g., 16/9 or 4/3).
-       * Used to derive height when explicit height is not provided.
-       * When provided, height must not be specified.
-       */
-      aspectRatio: number
-      height?: never
-    }
-)
+} & ([M] extends [undefined] ? { meta?: M } : { meta: M }) &
+  (
+    | {
+        /**
+         * Explicit height in pixels.
+         * When provided, aspectRatio must not be specified.
+         */
+        height: number
+        aspectRatio?: never
+      }
+    | {
+        /**
+         * width / height ratio (e.g., 16/9 or 4/3).
+         * Used to derive height when explicit height is not provided.
+         * When provided, height must not be specified.
+         */
+        aspectRatio: number
+        height?: never
+      }
+  )
 
 /**
  * Pixel-based rectangle that reserves space in the grid.
@@ -121,7 +121,7 @@ export type MasonryOptions = {
  * Represents a computed item in the Masonry layout result.
  * @public
  */
-export type MasonryLayoutCell<M = unknown> = {
+export type MasonryLayoutCell<M = undefined> = {
   index: number
   id?: string | undefined
   column: number
@@ -130,8 +130,7 @@ export type MasonryLayoutCell<M = unknown> = {
   y: number
   width: number
   height: number
-  meta: M
-}
+} & ([M] extends [undefined] ? { meta?: M } : { meta: M })
 
 /**
  * Result of a Masonry layout computation: grid info and per-cell geometry.
@@ -193,8 +192,8 @@ export function computeColumns(options: {
  * - `columnWidth / aspectRatio` if `aspectRatio` is provided, otherwise 0.
  * @public
  */
-export function computeMasonryLayout<M, T extends MasonryCellInput<M>>(
-  cells: readonly T[],
+export function computeMasonryLayout<M = undefined>(
+  cells: readonly MasonryCellInput<M>[],
   options: MasonryOptions,
 ): MasonryLayoutResult<M> {
   const { columnCount, columnWidth, gap } = computeColumns(options)
@@ -307,7 +306,7 @@ export function computeMasonryLayout<M, T extends MasonryCellInput<M>>(
       width: itemPixelWidth,
       height: h,
       meta: it.meta,
-    })
+    } as MasonryLayoutCell<M>)
 
     // Update the column heights for the spanned range with this item's bottom (including gap)
     const newBottom = y + h + g

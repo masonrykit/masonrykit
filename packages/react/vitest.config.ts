@@ -22,12 +22,13 @@ export default defineConfig({
       instances: [
         {
           browser: 'chromium',
+          setupFiles: ['./src/setupTests.js'],
         },
       ],
     },
     // Browser mode provides DOM, no separate environment required
-    setupFiles: ['./src/setupTests.ts'],
-    include: ['src/**/*.{test,spec}.{ts,tsx}', '__tests__/**/*.{ts,tsx}'],
+
+    include: ['src/**/*.{test,spec}.{ts,tsx}', '**/__tests__/**/*.{ts,tsx}'],
     passWithNoTests: true,
 
     clearMocks: true,

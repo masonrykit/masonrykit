@@ -34,10 +34,10 @@ describe('@masonrykit/core - stamps', () => {
     ]
 
     const items = [
-      { id: 'a', height: 30, meta: {} },
-      { id: 'b', height: 30, meta: {} },
-      { id: 'c', height: 30, meta: {} },
-      { id: 'd', height: 30, meta: {} },
+      { id: 'a', height: 30 },
+      { id: 'b', height: 30 },
+      { id: 'c', height: 30 },
+      { id: 'd', height: 30 },
     ] as const
 
     const layout = computeMasonryLayout(items, {
@@ -79,10 +79,10 @@ describe('@masonrykit/core - stamps', () => {
     const stamps: MasonryStamp[] = [{ x: 45, y: 0, width: 90, height: 30 }]
 
     const items = [
-      { id: 'a', height: 30, meta: {} },
-      { id: 'b', height: 30, meta: {} },
-      { id: 'c', height: 30, meta: {} },
-      { id: 'd', height: 30, meta: {} },
+      { id: 'a', height: 30 },
+      { id: 'b', height: 30 },
+      { id: 'c', height: 30 },
+      { id: 'd', height: 30 },
     ] as const
 
     const layout = computeMasonryLayout(items, {
@@ -117,9 +117,9 @@ describe('@masonrykit/core - stamps', () => {
     const stamps: MasonryStamp[] = [{ x: -10, y: 5, width: 200, height: 10 }]
 
     const items = [
-      { id: 'a', height: 20, meta: {} },
-      { id: 'b', height: 20, meta: {} },
-      { id: 'c', height: 20, meta: {} },
+      { id: 'a', height: 20 },
+      { id: 'b', height: 20 },
+      { id: 'c', height: 20 },
     ] as const
 
     const layout = computeMasonryLayout(items, {
@@ -153,9 +153,9 @@ describe('@masonrykit/core - stamps', () => {
     const stamps: MasonryStamp[] = [{ x: 0, y: 0, width: 200, height: 20 }]
 
     const items = [
-      { id: 'a', height: 10, meta: {} },
-      { id: 'b', height: 10, meta: {} },
-      { id: 'c', height: 10, meta: {} },
+      { id: 'a', height: 10 },
+      { id: 'b', height: 10 },
+      { id: 'c', height: 10 },
     ] as const
 
     const layout = computeMasonryLayout(items, {

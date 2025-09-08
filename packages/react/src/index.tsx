@@ -211,7 +211,7 @@ export type GridProps = {
   /**
    * Optional callback invoked after each successful layout compute.
    */
-  onLayout?: (layout: MasonryLayoutResult<any>) => void
+  onLayout?: (result: MasonryLayoutResult<any>) => void
 }
 
 /** @public */
@@ -442,25 +442,26 @@ export const Grid = memo(
 
       // Update positions map and optionally write inline styles directly (renderless DOM mode)
       positionsRef.current = new Map()
-      layout.cells.forEach((pos: MasonryLayoutCell<any>, index: number) => {
+      layout.cells.forEach((cell: MasonryLayoutCell<any>, index: number) => {
         const el = cellsRef.current[index]?.ref.current
         if (!el) return
         if (applyInlineStyles === 'dom') {
-          el.style.setProperty('--mk-cell-x', `${pos.x}px`)
-          el.style.setProperty('--mk-cell-y', `${pos.y}px`)
-          el.style.setProperty('--mk-cell-width', `${pos.width}px`)
-          el.style.setProperty('--mk-cell-height', `${pos.height}px`)
-          el.style.setProperty('--mk-cell-column', `${pos.column}`)
-          el.style.setProperty('--mk-cell-span', `${pos.span}`)
-          el.style.setProperty('--mk-cell-index', `${pos.index}`)
+          el.style.setProperty('--mk-cell-x', `${cell.x}px`)
+          el.style.setProperty('--mk-cell-y', `${cell.y}px`)
+          el.style.setProperty('--mk-cell-width', `${cell.width}px`)
+          el.style.setProperty('--mk-cell-height', `${cell.height}px`)
+          el.style.setProperty('--mk-cell-column', `${cell.column}`)
+          el.style.setProperty('--mk-cell-span', `${cell.span}`)
+          el.style.setProperty('--mk-cell-index', `${cell.index}`)
         }
-        positionsRef.current.set(el, pos as MasonryLayoutCell<any>)
+        positionsRef.current.set(el, cell as MasonryLayoutCell<any>)
       })
       lastComputedWidthRef.current = containerWidth
       if (applyInlineStyles === 'react') {
         setLayoutVersion((v) => v + 1)
       }
-      if (onLayout) onLayout(layout as MasonryLayoutResult<any>)
+      const result = layout as MasonryLayoutResult<any>
+      if (onLayout) onLayout(result)
     }
 
     // Class for position mode
@@ -494,7 +495,7 @@ export type CellProps = {
    * (including CSS custom properties) to be merged into the element's inline style.
    */
   setDynamicStyle?: (ctx: {
-    pos: MasonryLayoutCell<any>
+    cell: MasonryLayoutCell<any>
     index: number
     column: number
     span: number
@@ -551,29 +552,29 @@ export const Cell = memo(
 
     // Merge static style and dynamic style (if provided). No base positioning is applied by default.
 
-    const pos = grid.getPositionFor(ref.current)
+    const cell = grid.getPositionFor(ref.current)
 
     // Always expose computed geometry via CSS vars on the element's style prop.
     // Allow setDynamicStyle to augment/override if provided.
-    const baseDynamic: React.CSSProperties = pos
+    const baseDynamic: React.CSSProperties = cell
       ? ({
-          ['--mk-cell-x']: `${pos.x}px`,
-          ['--mk-cell-y']: `${pos.y}px`,
-          ['--mk-cell-width']: `${pos.width}px`,
-          ['--mk-cell-height']: `${pos.height}px`,
-          ['--mk-cell-column']: `${pos.column}`,
-          ['--mk-cell-span']: `${pos.span}`,
-          ['--mk-cell-index']: `${pos.index}`,
+          ['--mk-cell-x']: `${cell.x}px`,
+          ['--mk-cell-y']: `${cell.y}px`,
+          ['--mk-cell-width']: `${cell.width}px`,
+          ['--mk-cell-height']: `${cell.height}px`,
+          ['--mk-cell-column']: `${cell.column}`,
+          ['--mk-cell-span']: `${cell.span}`,
+          ['--mk-cell-index']: `${cell.index}`,
         } as React.CSSProperties)
       : {}
 
     const extraDynamic: React.CSSProperties =
-      pos && setDynamicStyle
+      cell && setDynamicStyle
         ? setDynamicStyle({
-            pos: pos,
-            index: pos.index,
-            column: pos.column,
-            span: pos.span,
+            cell: cell,
+            index: cell.index,
+            column: cell.column,
+            span: cell.span,
           })
         : ({} as React.CSSProperties)
 

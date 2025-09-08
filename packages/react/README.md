@@ -41,7 +41,7 @@ The component and hook are thin wrappers around the core utilities from `@masonr
 
 - `Masonry` props
   - `items: readonly { id?: string; height?: number; aspectRatio?: number; meta?: unknown }[]`
-  - `render: (item, index, pos) => React.ReactNode`
+  - `render: (item, index, cell) => React.ReactNode`
   - `gap?: number`
   - `columnWidth?: number`
   - `horizontalOrder?: boolean` — row‑wise placement when true (default: false shortest‑column)
@@ -51,9 +51,9 @@ The component and hook are thin wrappers around the core utilities from `@masonr
   - `style?: React.CSSProperties` — applied to the grid
   - `cellClassName?: string | (item, index) => string | undefined`
   - `cellStyle?: React.CSSProperties | (item, index) => React.CSSProperties | undefined`
-  - `setStyle?: (set, { layout }) => void` — set CSS vars at the grid level (`set('--mk-grid-h', '...')`)
-  - `setCellStyle?: (set, { pos, item }) => void` — set CSS vars per cell (`set('--mk-cell-x', '...')`)
-  - `after?: React.ReactNode | (layout) => React.ReactNode` — optional trailing content inside the grid
+  - `setStyle?: (set, { result }) => void` — set CSS vars at the grid level (`set('--mk-grid-h', '...')`)
+  - `setCellStyle?: (set, { cell, item }) => void` — set CSS vars per cell (`set('--mk-cell-x', '...')`)
+  - `after?: React.ReactNode | (result) => React.ReactNode` — optional trailing content inside the grid
 
 - `useMasonry(items, options)` returns
   - `ref: React.RefObject<HTMLElement>` — attach to a grid to measure width via `ResizeObserver`

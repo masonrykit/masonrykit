@@ -18,9 +18,9 @@ describe('@masonrykit/core - pixel rounding', () => {
 
     // Three items, all using aspect ratios for height derivation.
     const items = [
-      { id: 'a', aspectRatio: 2, meta: {} }, // h ~ cw / 2
-      { id: 'b', aspectRatio: 3, meta: {} }, // h ~ cw / 3
-      { id: 'c', aspectRatio: 1.5, meta: {} }, // h ~ cw / 1.5
+      { id: 'a', aspectRatio: 2 }, // h ~ cw / 2
+      { id: 'b', aspectRatio: 3 }, // h ~ cw / 3
+      { id: 'c', aspectRatio: 1.5 }, // h ~ cw / 1.5
     ] as const
 
     for (let gridWidth = 172; gridWidth <= 230; gridWidth++) {
@@ -57,10 +57,10 @@ describe('@masonrykit/core - pixel rounding', () => {
     const gap = 5
 
     const items = [
-      { id: 'i1', aspectRatio: 2.2, meta: {} },
-      { id: 'i2', aspectRatio: 2.8, meta: {} },
-      { id: 'i3', aspectRatio: 1.7, meta: {} },
-      { id: 'i4', aspectRatio: 3.3, meta: {} },
+      { id: 'i1', aspectRatio: 2.2 },
+      { id: 'i2', aspectRatio: 2.8 },
+      { id: 'i3', aspectRatio: 1.7 },
+      { id: 'i4', aspectRatio: 3.3 },
     ] as const
 
     for (let gridWidth = 172; gridWidth <= 230; gridWidth++) {
@@ -109,11 +109,7 @@ describe('@masonrykit/core - fit-width computations', () => {
     const gap = 20
     const desiredColumnWidth = 60
 
-    const items = [
-      { height: 30, meta: {} },
-      { height: 50, meta: {} },
-      { height: 30, meta: {} },
-    ] as const
+    const items = [{ height: 30 }, { height: 50 }, { height: 30 }] as const
 
     const layout = computeMasonryLayout(items, {
       gridWidth,
@@ -144,11 +140,7 @@ describe('@masonrykit/core - fit-width computations', () => {
     const desiredColumnWidth = 60
     const gap = 0
 
-    const items = [
-      { height: 30, meta: {} },
-      { height: 30, meta: {} },
-      { height: 30, meta: {} },
-    ] as const
+    const items = [{ height: 30 }, { height: 30 }, { height: 30 }] as const
 
     const layout = computeMasonryLayout(items, {
       gridWidth,
@@ -183,12 +175,7 @@ describe('@masonrykit/core - fit-width computations', () => {
     const gap = 5
     const desiredColumnWidth = 54
 
-    const items = [
-      { height: 40, meta: {} },
-      { height: 20, meta: {} },
-      { height: 10, meta: {} },
-      { height: 30, meta: {} },
-    ] as const
+    const items = [{ height: 40 }, { height: 20 }, { height: 10 }, { height: 30 }] as const
 
     const layout = computeMasonryLayout(items, {
       gridWidth,

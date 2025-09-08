@@ -7,6 +7,7 @@
  */
 
 import { computeMasonryLayout, observeElementWidth } from '@masonrykit/browser'
+import type { MasonryCellInput } from '@masonrykit/browser'
 
 import './style.css'
 
@@ -339,13 +340,7 @@ function updatePresetSelection(): void {
 
 // Demo items: a mix of fixed heights and aspect ratios
 type DemoMeta = { src: string }
-type DemoItem = {
-  id: string
-  height?: number
-  aspectRatio?: number
-  columnSpan?: number
-  meta: DemoMeta
-}
+type DemoItem = MasonryCellInput<DemoMeta>
 items = createDemoItems(state.itemCount)
 
 function createDemoItems(count: number): DemoItem[] {
@@ -387,7 +382,6 @@ function createDemoItems(count: number): DemoItem[] {
 
 // Render one frame
 function render(width: number): void {
-  const srcItems = items
   const stamps = state.useStamps
     ? [
         { x: -5, y: 0, width: (state.columnWidth + state.gap) * 4, height: 14 },
@@ -401,7 +395,7 @@ function render(width: number): void {
     gap: Math.max(0, state.gap),
     horizontalOrder: state.horizontalOrder,
   }
-  const layout = computeMasonryLayout(srcItems, stamps ? { ...baseOptions, stamps } : baseOptions)
+  const layout = computeMasonryLayout(items, stamps ? { ...baseOptions, stamps } : baseOptions)
 
   // Grid styling
   // Absolute mode: fix grid height using CSS var
@@ -412,9 +406,9 @@ function render(width: number): void {
   // Reconcile DOM nodes (no full clear) for smooth transitions
   const present = new Set<string>()
 
-  for (const pos of layout.cells) {
-    const item = srcItems[pos.index]!
-    const key = item.id ?? String(pos.index)
+  for (const cell of layout.cells) {
+    const item = items[cell.index]!
+    const key = item.id ?? String(cell.index)
     present.add(key)
 
     let el = ITEM_NODES.get(key)
@@ -443,7 +437,7 @@ function render(width: number): void {
         contentNode.innerHTML = ''
         const imgEl = document.createElement('img')
         imgEl.src = item.meta.src
-        imgEl.alt = (item.id ?? String(pos.index)).toString()
+        imgEl.alt = (item.id ?? String(cell.index)).toString()
         imgEl.loading = 'lazy'
         contentNode.appendChild(imgEl)
       }
@@ -452,23 +446,23 @@ function render(width: number): void {
         contentNode.innerHTML = ''
         const card = document.createElement('div')
         card.className = 'mk-card mk-app-card'
-        card.textContent = (item.id ?? String(pos.index)).toString()
+        card.textContent = (item.id ?? String(cell.index)).toString()
         contentNode.appendChild(card)
       }
     }
 
     // Use CSS variables for geometry and toggle between absolute vs transform3d
     // Update CSS variables with current geometry
-    el.style.setProperty('--mk-cell-x', `${pos.x}px`)
-    el.style.setProperty('--mk-cell-y', `${pos.y}px`)
-    el.style.setProperty('--mk-cell-w', `${pos.width}px`)
-    el.style.setProperty('--mk-cell-h', `${pos.height}px`)
+    el.style.setProperty('--mk-cell-x', `${cell.x}px`)
+    el.style.setProperty('--mk-cell-y', `${cell.y}px`)
+    el.style.setProperty('--mk-cell-w', `${cell.width}px`)
+    el.style.setProperty('--mk-cell-h', `${cell.height}px`)
     // positioning mode is handled via .mk-grid or .mk-grid-gpu in CSS
 
     // update caption on each render
     const captionNode = el.querySelector('.mk-caption')
     if (captionNode) {
-      captionNode.textContent = `${key} • ${Math.round(pos.width)}×${Math.round(pos.height)}`
+      captionNode.textContent = `${key} • ${Math.round(cell.width)}×${Math.round(cell.height)}`
     }
 
     if (!el.parentElement) grid.appendChild(el)

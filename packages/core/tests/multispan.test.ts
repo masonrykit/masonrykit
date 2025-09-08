@@ -9,10 +9,10 @@ describe('@masonrykit/core - multi-span placement', () => {
     const gap = 0
 
     const items = [
-      { id: 'A', height: 30, columnSpan: 2, meta: {} }, // expect col=0, x=0, y=0
-      { id: 'B', height: 30, columnSpan: 2, meta: {} }, // expect col=2, x=100, y=0
-      { id: 'C', height: 20, columnSpan: 3, meta: {} }, // expect col=0, x=0, y=30
-      { id: 'D', height: 10, columnSpan: 1, meta: {} }, // expect col=3, x=150, y=30
+      { id: 'A', height: 30, columnSpan: 2 }, // expect col=0, x=0, y=0
+      { id: 'B', height: 30, columnSpan: 2 }, // expect col=2, x=100, y=0
+      { id: 'C', height: 20, columnSpan: 3 }, // expect col=0, x=0, y=30
+      { id: 'D', height: 10, columnSpan: 1 }, // expect col=3, x=150, y=30
     ] as const
 
     const layout = computeMasonryLayout(items, {
@@ -56,10 +56,10 @@ describe('@masonrykit/core - multi-span placement', () => {
 
     // Sequence exercises: span=2, span=1, span=2 (wrap), span=1
     const items = [
-      { id: 'A', height: 10, columnSpan: 2, meta: {} }, // start=0 -> col=0, y=0
-      { id: 'B', height: 10, columnSpan: 1, meta: {} }, // start=2 -> col=2, y=0
-      { id: 'C', height: 10, columnSpan: 2, meta: {} }, // start=3 -> wrap to 0, y=20
-      { id: 'D', height: 10, columnSpan: 1, meta: {} }, // start=5%4=1 -> col=1, y=40
+      { id: 'A', height: 10, columnSpan: 2 }, // start=0 -> col=0, y=0
+      { id: 'B', height: 10, columnSpan: 1 }, // start=2 -> col=2, y=0
+      { id: 'C', height: 10, columnSpan: 2 }, // start=3 -> wrap to 0, y=20
+      { id: 'D', height: 10, columnSpan: 1 }, // start=5%4=1 -> col=1, y=40
     ] as const
 
     const layout = computeMasonryLayout(items, {
@@ -104,8 +104,8 @@ describe('@masonrykit/core - multi-span placement', () => {
       const stamps: MasonryStamp[] = [{ x: 45, y: 0, width: 90, height: 30 }]
 
       const items = [
-        { id: 'E', height: 20, columnSpan: 3, meta: {} }, // expect start=0, y=30
-        { id: 'F', height: 10, columnSpan: 2, meta: {} }, // after E, expect start=0, y=50
+        { id: 'E', height: 20, columnSpan: 3 }, // expect start=0, y=30
+        { id: 'F', height: 10, columnSpan: 2 }, // after E, expect start=0, y=50
       ] as const
 
       const layout = computeMasonryLayout(items, {
@@ -141,8 +141,8 @@ describe('@masonrykit/core - multi-span placement', () => {
       const stamps: MasonryStamp[] = [{ x: 0, y: 0, width: 200, height: 20 }]
 
       const items = [
-        { id: 'G', height: 10, columnSpan: 2, meta: {} }, // expect start=0, y=30
-        { id: 'H', height: 10, columnSpan: 1, meta: {} }, // expect start=2, y=30
+        { id: 'G', height: 10, columnSpan: 2 }, // expect start=0, y=30
+        { id: 'H', height: 10, columnSpan: 1 }, // expect start=2, y=30
       ] as const
 
       const layout = computeMasonryLayout(items, {

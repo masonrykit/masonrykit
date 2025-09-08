@@ -177,7 +177,7 @@ export function useMasonry<T extends MasonryCellInput<any>>(
         : undefined
 
     type Meta = T extends { meta: infer M } ? M : unknown
-    return computeMasonryLayout<Meta, T>(cells, {
+    return computeMasonryLayout(cells, {
       gridWidth: effectiveGridWidth,
       gap: resolved.gap,
       columnWidth: resolved.columnWidth,
@@ -185,7 +185,7 @@ export function useMasonry<T extends MasonryCellInput<any>>(
         ? { horizontalOrder: options.horizontalOrder }
         : {}),
       ...(mergedStamps ? { stamps: mergedStamps } : {}),
-    })
+    }) as MasonryLayoutResult<Meta>
   }, [
     cells,
     measuredWidth,

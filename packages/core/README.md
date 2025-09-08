@@ -85,12 +85,11 @@ layout = {
 ### Types
 
 ```ts
-export type MasonryCellInput<M = unknown> =
+export type MasonryCellInput<M = undefined> =
   {
     id?: string
     columnSpan?: number  // optional number of columns to span (≥ 1)
-    meta: M
-  } & (
+  } & ([M] extends [undefined] ? { meta?: M } : { meta: M }) & (
     | {
         // Explicit height in pixels. When provided, aspectRatio must not be specified.
         height: number
@@ -125,7 +124,7 @@ export type MasonryOptions = {
   stamps?: MasonryStamp[] // pre-occupied rectangles that raise column baselines
 }
 
-export type MasonryLayoutCell<M = unknown> = {
+export type MasonryLayoutCell<M = undefined> = {
   index: number
   id?: string
   column: number
@@ -134,8 +133,7 @@ export type MasonryLayoutCell<M = unknown> = {
   y: number
   width: number
   height: number
-  meta: M
-}
+} & ([M] extends [undefined] ? { meta?: M } : { meta: M })
 
 export type MasonryLayoutResult<M = unknown> = {
   cells: MasonryLayoutCell<M>[]
