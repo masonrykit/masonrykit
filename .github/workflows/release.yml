@@ -34,6 +34,7 @@ jobs:
         with:
           node-version: 22.12.0
           registry-url: https://registry.npmjs.org
+          always-auth: true
           cache: pnpm
           cache-dependency-path: pnpm-lock.yaml
 
@@ -60,6 +61,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           # Redundant with job-level env, but explicit for clarity
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NPM_CONFIG_PROVENANCE: true
 
       - name: Push git tags created during publish
         if: steps.changesets.outputs.published == 'true'
