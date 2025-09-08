@@ -7,7 +7,12 @@ describe('@masonrykit/core - gutter spacing (span=1)', () => {
     const gap = 20
     const columnWidth = 60
 
-    const items = [{ height: 30 }, { height: 30 }, { height: 30 }, { height: 30 }] as const
+    const items = [
+      { type: 'height' as const, height: 30 },
+      { type: 'height' as const, height: 30 },
+      { type: 'height' as const, height: 30 },
+      { type: 'height' as const, height: 30 },
+    ] as const
 
     const layout = computeMasonryLayout(items, {
       gridWidth,
@@ -42,11 +47,11 @@ describe('@masonrykit/core - gutter spacing (span=1)', () => {
     const columnWidth = 60
 
     const items = [
-      { id: 'i0', height: 30 },
-      { id: 'i1', height: 70 },
-      { id: 'i2', height: 30 },
-      { id: 'i3', height: 70 },
-      { id: 'i4', height: 30 },
+      { id: 'i0', type: 'height' as const, height: 30 },
+      { id: 'i1', type: 'height' as const, height: 70 },
+      { id: 'i2', type: 'height' as const, height: 30 },
+      { id: 'i3', type: 'height' as const, height: 70 },
+      { id: 'i4', type: 'height' as const, height: 30 },
     ] as const
 
     const layout = computeMasonryLayout(items, {
@@ -78,15 +83,15 @@ describe('@masonrykit/core - horizontalOrder', () => {
     const gridWidth = 180
     const columnWidth = 60
     const items = [
-      { height: 70 },
-      { height: 50 },
-      { height: 30 },
-      { height: 30 },
-      { height: 70 },
-      { height: 50 },
-      { height: 30 },
-      { height: 30 },
-      { height: 30 },
+      { type: 'height' as const, height: 70 },
+      { type: 'height' as const, height: 50 },
+      { type: 'height' as const, height: 30 },
+      { type: 'height' as const, height: 30 },
+      { type: 'height' as const, height: 70 },
+      { type: 'height' as const, height: 50 },
+      { type: 'height' as const, height: 30 },
+      { type: 'height' as const, height: 30 },
+      { type: 'height' as const, height: 30 },
     ] as const
 
     const layout = computeMasonryLayout(items, {
@@ -111,7 +116,9 @@ describe('@masonrykit/core - horizontalOrder', () => {
     const gridWidth = 210
     const desiredColumnWidth = 60
     const gap = 10
-    const items = new Array(6).fill(0).map((_, i) => ({ height: 30 + (i % 3) * 20 }))
+    const items = new Array(6)
+      .fill(0)
+      .map((_, i) => ({ type: 'height' as const, height: 30 + (i % 3) * 20 }))
 
     const layout = computeMasonryLayout(items, {
       gridWidth,

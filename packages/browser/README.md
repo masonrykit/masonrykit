@@ -1,80 +1,96 @@
 # @masonrykit/browser
 
-Lightweight, framework-agnostic utilities to compute Masonry-style grid layouts in the browser.
+Browser utilities for MasonryKit. Includes all exports from `@masonrykit/core`.
 
-- Re-exports core math from `@masonrykit/core` (multi-span items, stamps, gaps, rounding)
-- Includes `observeElementWidth` for browser width observation (SSR-safe no-op outside browser)
-- Pure, deterministic layout math with no DOM reads; ships ESM + CJS + types
-
-## Install
+## Installation
 
 ```bash
-pnpm add @masonrykit/browser
+npm install @masonrykit/browser
 ```
 
-## Usage
+## Quick Start
 
-Re-exported core utilities:
-```ts
-import { computeColumns, computeMasonryLayout } from '@masonrykit/browser'
-```
+```typescript
+import {
+  computeMasonryLayout,
+  observeElementWidth,
+  convertColumnStampsToPixel,
+} from '@masonrykit/browser'
 
-Browser width observation:
-```ts
-import { observeElementWidth } from '@masonrykit/browser'
-
-const stop = observeElementWidth(gridEl, (width) => {
-  // compute layout with width
+// Responsive width observation
+const gridElement = document.querySelector('.grid')
+const dispose = observeElementWidth(gridElement, (width) => {
+  const layout = computeMasonryLayout(cells, {
+    gridWidth: width,
+    columnWidth: 200,
+    gap: 12,
+  })
+  // Apply new positions...
 })
 
-// later:
-// stop()
+// Column-aligned stamps
+const stampsCols = [{ startCol: 0, span: 2, y: 0, height: 50 }]
+const columns = { columnWidth: 200, gap: 12 }
+const pixelStamps = convertColumnStampsToPixel(stampsCols, columns)
 ```
 
-Quick start example:
-```ts
-import { computeColumns, computeMasonryLayout } from '@masonrykit/browser'
+## API
 
-const columns = computeColumns({ gridWidth: 800, columnWidth: 200, gap: 12 })
-const items = [
-  { id: 'a', height: 100, meta: { src: '/a.jpg' } },
-  { id: 'b', aspectRatio: 1, meta: { src: '/b.jpg' } },
-] as const
+### Core Re-exports
 
-const layout = computeMasonryLayout(items, {
-  gridWidth: 800,
-  columnWidth: columns.columnWidth,
-  gap: columns.gap,
-})
+All functions and types from `@masonrykit/core` are re-exported. See the [core documentation](../core/README.md) for details.
+
+### observeElementWidth
+
+```typescript
+function observeElementWidth(
+  element: Element | null | undefined,
+  onWidth: (width: number) => void,
+): () => void
 ```
 
-## Scripts
+Observes an element's width and calls the callback when it changes.
 
-This package uses `tsdown` for bundling and `vitest` for tests.
+- Uses ResizeObserver for efficient tracking
+- SSR-safe (no-ops when `window` is undefined)
+- Calls immediately with current width
+- Returns disposer function
 
-```bash
-# From the repo root:
-pnpm build      # builds all packages
-pnpm dev        # watch-mode build
-pnpm test       # run tests
+### convertColumnStampsToPixel
 
-# From this package directory:
-pnpm run build  # tsdown build (browser platform)
-pnpm run dev    # tsdown watch (browser platform)
-pnpm run test   # vitest
-pnpm run lint   # eslint
+```typescript
+function convertColumnStampsToPixel(
+  stampsCols: ColumnStamp[],
+  columns: { columnWidth: number; gap: number },
+): Stamp[]
 ```
 
-## Documentation
+Converts column-aligned stamps to pixel-based stamps.
 
-- Core math and API: see `@masonrykit/core` README for full details on multi-span items, stamps, gaps, and layout behavior.
-- This package re-exports the core API and provides `observeElementWidth` for browser environments.
+```typescript
+type ColumnStamp = {
+  startCol: number // Starting column index
+  span: number // Number of columns to span
+  y: number // y position in pixels
+  height: number // Height in pixels
+}
+```
 
-## Notes
+### Utility Functions
 
-- Heights are taken from `item.height`, or derived from `columnWidth / aspectRatio` when `aspectRatio` is provided.
-- Items are placed in the shortest column first (classic Masonry strategy).
-- All calculations are done in pure functions—bring your own rendering layer.
+```typescript
+// Parse CSS numeric values
+function parseCssNumber(value: string | null | undefined): number | undefined
+
+// Read CSS custom properties
+function getCssNumber(
+  element: Element,
+  ...propertyNames: string[]
+): number | undefined
+
+// RequestAnimationFrame wrapper
+function raf(fn: () => void): void
+```
 
 ## License
 

@@ -1,7 +1,7 @@
 ﻿// Node environment test: no DOM APIs used
 import { describe, it, expect } from 'vitest'
 import { computeMasonryLayout } from '../src/index'
-import type { MasonryCellInput } from '../src/index'
+import type { CellInput } from '../src/index'
 
 describe('@masonrykit/browser - computeMasonryLayout', () => {
   it('computes layout with desired columnWidth and gap', () => {
@@ -10,12 +10,12 @@ describe('@masonrykit/browser - computeMasonryLayout', () => {
     const desiredColumnWidth = 188
 
     const items = [
-      { id: 'a', height: 100 },
-      { id: 'b', aspectRatio: 1 }, // height = columnWidth / 1 = columnWidth
-      { id: 'c', height: 50 },
-      { id: 'd', aspectRatio: 2 }, // height = columnWidth / 2
-      { id: 'e', aspectRatio: 0.5 }, // height = columnWidth / 0.5 = 2 * columnWidth
-    ] as const satisfies readonly MasonryCellInput[]
+      { id: 'a', type: 'height' as const, height: 100 },
+      { id: 'b', type: 'aspect' as const, aspectRatio: 1 }, // height = columnWidth / 1 = columnWidth
+      { id: 'c', type: 'height' as const, height: 50 },
+      { id: 'd', type: 'aspect' as const, aspectRatio: 2 }, // height = columnWidth / 2
+      { id: 'e', type: 'aspect' as const, aspectRatio: 0.5 }, // height = columnWidth / 0.5 = 2 * columnWidth
+    ] as const satisfies readonly CellInput[]
 
     const layout = computeMasonryLayout(items, {
       gridWidth,
@@ -60,7 +60,12 @@ describe('@masonrykit/browser - computeMasonryLayout', () => {
     const gap = 16
     const desiredColumnWidth = 200
 
-    const items = [{ height: 100 }, { height: 100 }, { height: 100 }, { height: 100 }] as const
+    const items = [
+      { type: 'height' as const, height: 100 },
+      { type: 'height' as const, height: 100 },
+      { type: 'height' as const, height: 100 },
+      { type: 'height' as const, height: 100 },
+    ] as const
 
     const layout = computeMasonryLayout(items, {
       gridWidth,

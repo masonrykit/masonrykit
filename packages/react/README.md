@@ -1,318 +1,219 @@
 # @masonrykit/react
 
-React bindings for MasonryKit focused on a “writer-based” API:
-- You provide the data and a render function for each cell.
-- The library computes a layout and calls your style writers to set CSS properties/variables.
-- No preset class names or CSS variable names are required (we include a small helper that writes `--mk-cell-*` vars for convenience).
+React components and hooks for MasonryKit.
 
-- Computes layouts with `@masonrykit/core` (via `@masonrykit/browser`)
-- Observes grid width on the client (or accept a fixed width)
-- Zero default markup/styling; you own the DOM and CSS
-- Ships ESM + CJS + TypeScript types
-
-## Install
+## Installation
 
 ```bash
-pnpm add @masonrykit/react react react-dom
+npm install @masonrykit/react react react-dom
 ```
 
-(optional) If you need to use the math/helpers directly:
-```bash
-pnpm add @masonrykit/browser
-```
-
-## Quick start
-
-This example uses:
-- `Masonry` component to render the grid and apply cell/grid styles
-- `cssVarWriter()` to set `--mk-cell-*` CSS variables that you can consume in your CSS
-- A small `gridClassName` and `cellClassName` that read those variables
+## Quick Start
 
 ```tsx
-import { Masonry, cssVarWriter } from '@masonrykit/react'
+import {
+  Masonry,
+  createHeightCell,
+  createAspectCell,
+  createGridCssVarsStyle,
+  createCellCssVarsStyle,
+} from '@masonrykit/react'
 
-type Photo = {
-  id: string
-  src: string
-}
+function PhotoGallery() {
+  const cells = [
+    createHeightCell('1', 200),
+    createAspectCell('2', 16 / 9),
+    createHeightCell('3', 150),
+  ]
 
-const cells = [
-  { id: 'a', height: 100, meta: { src: '/a.jpg' } },
-  { id: 'b', aspectRatio: 1, meta: { src: '/b.jpg' } },
-  { id: 'c', height: 50, meta: { src: '/c.jpg' } },
-] as const
-
-export function Gallery() {
   return (
-    <Masonry<Photo>
+    <Masonry
       cells={cells}
-      // You can pass literal values, CSS vars, or functions (see “Resolvers” below)
-      width={800}
-      gap={12}
-      columnWidth={200}
-      horizontalOrder={false}
-      // Writer that sets --mk-cell-*
-      setCellStyle={cssVarWriter()}
-      // Optionally set grid height via CSS var
-      setGridStyle={(grid) => ({ ['--mk-grid-height']: `${grid.height}px` })}
-      // Your base classes (no defaults injected by the library)
-      gridClassName="relative w-full min-h-80"
-      cellClassName="absolute"
-      // Content rendering
-      renderCell={(cell) => <img src={cell.meta.src} alt={cell.id} className="block w-full h-full object-cover" />}
-      // Stable keys for wrappers
-      keyForCell={(cell, i) => cell.id ?? String(i)}
-    />
+      columnWidth={250}
+      gap={16}
+      getGridStyle={createGridCssVarsStyle()}
+      getCellStyle={createCellCssVarsStyle()}
+      className="relative"
+    >
+      {(cell) => (
+        <div
+          key={cell.id}
+          className="absolute w-[var(--mk-cell-width)] h-[var(--mk-cell-height)] translate-x-[var(--mk-cell-x)] translate-y-[var(--mk-cell-y)]"
+        >
+          Content for {cell.id}
+        </div>
+      )}
+    </Masonry>
   )
 }
 ```
 
-CSS ideas to consume `--mk-cell-*` (transform vs inset). You pick one.
+## API
 
-Transform-based positioning:
-```css
-/* Grid wrapper can use the computed height */
-.my-grid {
-  height: var(--mk-grid-height);
-  position: relative; /* you provide base styles */
-}
-
-/* Cell wrappers read CSS variables and apply transforms */
-.my-cell {
-  position: absolute;
-  width: var(--mk-cell-width);
-  height: var(--mk-cell-height);
-  left: 0; top: 0;
-  transform: translate3d(var(--mk-cell-x), var(--mk-cell-y), 0);
-  transition: transform var(--mk-app-transition-duration, 220ms) var(--mk-app-transition-easing, ease),
-              width var(--mk-app-transition-duration, 220ms) var(--mk-app-transition-easing, ease),
-              height var(--mk-app-transition-duration, 220ms) var(--mk-app-transition-easing, ease);
-}
-```
-
-Inset-based positioning:
-```css
-.my-cell {
-  position: absolute;
-  width: var(--mk-cell-width);
-  height: var(--mk-cell-height);
-  left: var(--mk-cell-x);
-  top: var(--mk-cell-y);
-  transition: left var(--mk-app-transition-duration, 220ms) var(--mk-app-transition-easing, ease),
-              top var(--mk-app-transition-duration, 220ms) var(--mk-app-transition-easing, ease),
-              width var(--mk-app-transition-duration, 220ms) var(--mk-app-transition-easing, ease),
-              height var(--mk-app-transition-duration, 220ms) var(--mk-app-transition-easing, ease);
-}
-```
-
-You can toggle between these with a class or variable in your own styles.
-
-## Component API
-
-### Masonry
-
-```ts
-export type Resolver<T> =
-  | T
-  | { cssVar: string; parse?: (raw: string) => T | undefined }
-  | ((el: HTMLElement) => T | undefined)
-
-export type MasonryProps<M = unknown> = {
-  // Data model
-  cells: ReadonlyArray<MasonryCellInput<M>>
-
-  // Inputs (resolvers accept a literal, css var, or function)
-  width?: Resolver<number>
-  gap?: Resolver<number>
-  columnWidth?: Resolver<number>
-  horizontalOrder?: Resolver<boolean>
-
-  // Stamps
-  stamps?: MasonryStamp[]
-  stampsCols?: Array<{ startCol: number; span: number; top: number; height: number }>
-
-  // Writers (return React.CSSProperties style objects)
-  setCellStyle: (
-    geom: { x: number; y: number; width: number; height: number },
-    ctx: { index: number; cell: MasonryCellInput<M>; layout: MasonryLayoutResult<M> },
-  ) => React.CSSProperties
-
-  setGridStyle?: (
-    grid: MasonryLayoutResult<M>['grid'],
-    ctx: { layout: MasonryLayoutResult<M> },
-  ) => React.CSSProperties
-
-  // Optional applier to apply a style object (defaults support CSS vars + camel-cased props)
-  applyStyle?: (el: HTMLElement, style: React.CSSProperties) => void
-
-  // Rendering
-  renderCell: (cell: MasonryCellInput<M>, index: number) => React.ReactNode
-  keyForCell?: (cell: MasonryCellInput<M>, index: number) => string
-
-  // Base styling for grid/cell wrappers
-  gridClassName?: string
-  gridStyle?: React.CSSProperties
-  cellClassName?: string
-  cellStyle?: React.CSSProperties
-
-  // Additional props for the grid element (merged with gridClassName/gridStyle)
-  gridProps?: React.HTMLAttributes<HTMLDivElement>
-}
-```
-
-Notes:
-- “Resolvers” let you provide inputs flexibly:
-  - literal number/boolean
-  - `{ cssVar: '--your-var', parse?: (raw) => number }`
-  - `(el) => number | boolean` reading directly from the grid element
-- `stampsCols` is converted internally using resolved columns/gap into pixel-based stamps (merged with `stamps`).
-- `setCellStyle` and `setGridStyle` return style objects; we apply them, merged with your `cellStyle`/`gridStyle`.
-- If you want total control over style application, pass a custom `applyStyle`.
-
-### cssVarWriter
-
-Helper that sets only `--mk-cell-*` variables so your CSS can consume them:
-
-```ts
-import { cssVarWriter } from '@masonrykit/react'
-
-const setCellStyle = cssVarWriter()
-// -> returns { '--mk-cell-x': '...', '--mk-cell-y': '...', '--mk-cell-width': '...', '--mk-cell-height': '...' }
-```
-
-### MasonryList
-
-A convenience wrapper that maps your domain data to cells and passes the original item via `meta`.
-
-```ts
-export type MasonryListProps<T> = {
-  data: readonly T[]
-  getCell: (item: T, index: number, array: readonly T[]) => {
-    id?: string
-    height?: number
-    aspectRatio?: number
-    columnSpan?: number
-  }
-  renderCell: (item: T, index: number) => React.ReactNode
-  keyForItem?: (item: T, index: number) => string
-} & Omit<MasonryProps<T>, 'cells' | 'renderCell' | 'keyForCell'>
-```
-
-Usage:
+### useMasonry Hook
 
 ```tsx
-import { MasonryList, cssVarWriter } from '@masonrykit/react'
+function useMasonry<M>(
+  cells: readonly Cell<M>[],
+  config?: Config<M>,
+): HookResult<M>
+```
 
-type Post = { id: string; src: string; kind: 'photo' | 'text' }
+Core hook for manual layout management.
 
-<MasonryList<Post>
-  data={posts}
-  getCell={(p, i) => ({
-    id: p.id,
-    columnSpan: i % 10 === 0 ? 2 : 1,
-    ...(p.kind === 'photo' ? { aspectRatio: 4 / 3 } : { height: 120 }),
-  })}
-  renderCell={(p) => (p.kind === 'photo' ? <img src={p.src} /> : <div>{p.id}</div>)}
-  keyForItem={(p) => p.id}
-  width={{ cssVar: '--grid-w', parse: parseFloat }}
-  gap={12}
-  columnWidth={220}
-  setCellStyle={cssVarWriter()}
-  gridClassName="relative"
-  cellClassName="absolute"
+### Masonry Component
+
+```tsx
+interface Props<M> {
+  cells: readonly Cell<M>[]
+  children:
+    | ((cell: Cell<M>, index: number) => React.ReactNode)
+    | React.ReactNode
+  className?: string
+  style?: React.CSSProperties
+
+  // Layout options
+  gap?: number
+  columnWidth?: number
+  gridWidth?: number
+  horizontalOrder?: boolean
+  stamps?: Stamp[]
+  stampsCols?: ColumnStamp[]
+
+  // Style callbacks
+  getGridStyle?: (layout: LayoutResult<M>) => React.CSSProperties | undefined
+  getCellStyle?: (
+    cell: LayoutResult<M>['cells'][0],
+    index: number,
+  ) => React.CSSProperties | undefined
+}
+```
+
+### Cell Types
+
+```tsx
+type Cell<T = undefined> = {
+  id: string
+  height?: number
+  aspectRatio?: number
+  columnSpan?: number
+  meta: T
+}
+```
+
+### Helper Functions
+
+```tsx
+// Create cells with explicit height
+function createHeightCell<T>(id: string, height: number, meta?: T): Cell<T>
+
+// Create cells with aspect ratio
+function createAspectCell<T>(id: string, aspectRatio: number, meta?: T): Cell<T>
+
+// CSS variable style generators
+function createGridCssVarsStyle(): (
+  layout: LayoutResult<any>,
+) => React.CSSProperties
+function createCellCssVarsStyle(): (
+  cell: LayoutResult<any>['cells'][0],
+  index: number,
+) => React.CSSProperties
+```
+
+## Styling with CSS Variables
+
+The recommended approach uses CSS variables for positioning:
+
+```tsx
+<Masonry
+  cells={cells}
+  getGridStyle={createGridCssVarsStyle()}
+  getCellStyle={createCellCssVarsStyle()}
+>
+  {(cell) => (
+    <div
+      key={cell.id}
+      className="absolute w-[var(--mk-cell-width)] h-[var(--mk-cell-height)] translate-x-[var(--mk-cell-x)] translate-y-[var(--mk-cell-y)]"
+    >
+      {cell.id}
+    </div>
+  )}
+</Masonry>
+```
+
+### Available CSS Variables
+
+**Grid variables:**
+
+- `--mk-grid-width`
+- `--mk-grid-height`
+- `--mk-grid-columns`
+
+**Cell variables:**
+
+- `--mk-cell-x`
+- `--mk-cell-y`
+- `--mk-cell-width`
+- `--mk-cell-height`
+- `--mk-cell-column`
+
+## Advanced Features
+
+### Multi-span Items
+
+```tsx
+const cells = [
+  { id: '1', height: 200 },
+  { id: '2', height: 150, columnSpan: 2 }, // Spans 2 columns
+  { id: '3', aspectRatio: 1 },
+]
+```
+
+### Stamps
+
+```tsx
+// Column-based stamps
+<Masonry
+  cells={cells}
+  stampsCols={[
+    { startCol: 0, span: 2, y: 0, height: 60 }
+  ]}
+/>
+
+// Pixel-based stamps
+<Masonry
+  cells={cells}
+  stamps={[
+    { x: 0, y: 0, width: 400, height: 60 }
+  ]}
 />
 ```
 
-## Hook API
-
-### useMasonry
-
-Compute a layout without rendering. You supply your own DOM/React wrappers.
-
-```ts
-export function useMasonry<M>(
-  cells: readonly MasonryCellInput<M>[],
-  options: {
-    width: Resolver<number> | undefined
-    gap: Resolver<number> | undefined
-    columnWidth: Resolver<number> | undefined
-    horizontalOrder: Resolver<boolean> | undefined
-    stamps: MasonryStamp[] | undefined
-    stampsCols: Array<{ startCol: number; span: number; top: number; height: number }> | undefined
-  },
-): {
-  ref: React.RefObject<HTMLDivElement | null> // attach to grid to measure width when needed
-  width: number                               // measured or literal width
-  layout: MasonryLayoutResult<M>
-}
-```
-
-Example:
+### Horizontal Ordering
 
 ```tsx
-import { useMasonry } from '@masonrykit/react'
-
-function BareMasonry({ cells }: { cells: readonly MasonryCellInput<unknown>[] }) {
-  const { ref, layout } = useMasonry(cells, {
-    width: 800, // literal -> no measuring
-    gap: 12,
-    columnWidth: 200,
-    horizontalOrder: false,
-    stamps: undefined,
-    stampsCols: undefined,
-  })
-
-  // ...create/update DOM using `layout` and your own style writers
-  return <div ref={ref} />
-}
+<Masonry cells={cells} horizontalOrder={true} />
 ```
 
-## Resolvers
+## TypeScript Support
 
-Every layout input supports “resolvers”:
-- literal `number | boolean`
-- CSS var resolver: `{ cssVar: '--my-gap', parse?: (raw) => number }`
-- function resolver: `(el: HTMLElement) => number | boolean | undefined`
+Full TypeScript support with generic metadata:
 
-We call resolvers against the grid element (when measuring). If you pass a literal `width`, we don’t measure the grid and compute immediately.
+```tsx
+interface Photo {
+  src: string
+  alt: string
+}
 
-## Stamps (and stampsCols)
+const cells: Cell<Photo>[] = [
+  createHeightCell<Photo>('1', 200, { src: '/photo1.jpg', alt: 'Photo 1' })
+]
 
-- `stamps`: pixel rectangles `{ x, y, width, height }` that pre-occupy space (their bottom raises baseline for any overlapped columns).
-- `stampsCols`: column-aligned stamps `{ startCol, span, top, height }` converted to px using resolved `columnWidth`/`gap`.
-
-## SSR / Effects
-
-- DOM reads/writes only occur in effects. We use an isomorphic layout effect (layout effect in the browser, regular effect elsewhere) to avoid SSR warnings.
-- If you want the very first paint to use a “guess” width (without measuring), pass a literal `width` for the initial render.
-
-## Notes
-
-- Heights are taken from `cell.height`, or derived from `columnWidth / aspectRatio` when `aspectRatio` is provided.
-- Placement defaults to classic “shortest column” (spans supported); set `horizontalOrder` to true for row-wise.
-- Rounding is applied to avoid sub-pixel jitter.
-
-## Types
-
-Useful types re-exported from `@masonrykit/browser`/`@masonrykit/core` in this package’s types:
-- `MasonryCellInput<M>`
-- `MasonryLayoutResult<M>`
-- `MasonryStamp`
-
-This package also exports:
-- `Resolver<T>`
-- `MasonryProps<M>`
-- `MasonryListProps<T>`
-
-## Scripts
-
-```bash
-# From repo root
-pnpm build      # builds all packages
-pnpm dev        # dev (watch)
-pnpm test       # tests
-pnpm lint       # eslint
-pnpm typecheck  # tsc
+<Masonry<Photo> cells={cells}>
+  {(cell) => (
+    <img src={cell.meta.src} alt={cell.meta.alt} />
+  )}
+</Masonry>
 ```
 
 ## License

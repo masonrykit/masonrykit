@@ -13,6 +13,9 @@
     "declaration": true,
     "declarationMap": true,
 
+    "noEmit": false,
+    "allowImportingTsExtensions": false,
+
     "types": []
   },
   "include": ["src"],

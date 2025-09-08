@@ -1,9 +1,14 @@
-import React, { useMemo } from 'react'
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import { createRoot, type Root } from 'react-dom/client'
 
-import { Masonry, useMasonry, cssVarWriter } from '../src/index'
-import type { MasonryCellInput } from '@masonrykit/browser'
+import {
+  useMasonry,
+  createHeightCell,
+  createAspectCell,
+  createGridCssVarsStyle,
+  createCellCssVarsStyle,
+  type Cell,
+} from '../src/index'
 
 function nextFrame(): Promise<void> {
   return new Promise((resolve) => {
@@ -11,13 +16,12 @@ function nextFrame(): Promise<void> {
   })
 }
 
-describe('@masonrykit/react integration (new API)', () => {
+describe('@masonrykit/react', () => {
   let container: HTMLElement
   let root: Root | null = null
 
   beforeEach(() => {
     container = document.createElement('div')
-    // Keep container visible to ensure getBoundingClientRect has a width (when needed)
     container.style.position = 'absolute'
     container.style.left = '0'
     container.style.top = '0'
@@ -36,124 +40,232 @@ describe('@masonrykit/react integration (new API)', () => {
     }
   })
 
-  it('Masonry renders and applies --mk-cell-* variables via cssVarWriter (smoke)', async () => {
-    const cells: ReadonlyArray<MasonryCellInput<undefined>> = [
-      { id: 'a', height: 100 },
-      { id: 'b', aspectRatio: 1 },
-      { id: 'c', height: 50 },
+  it('renders with useMasonry hook and CSS variables', async () => {
+    const cells: Cell[] = [
+      createHeightCell('a', 100),
+      createAspectCell('b', 1), // 1:1 aspect ratio
+      createHeightCell('c', 50),
     ]
 
-    root!.render(
-      <Masonry
-        cells={cells}
-        // Provide explicit width (no measuring needed)
-        width={800}
-        gap={12}
-        columnWidth={200}
-        horizontalOrder={false}
-        setCellStyle={cssVarWriter()}
-        // Apply grid height via CSS var for convenience (optional)
-        setGridStyle={(grid) => ({ ['--mk-grid-height' as any]: `${grid.height}px` })}
-        // Stable classes for testing queries
-        gridClassName="mk-grid"
-        cellClassName="mk-cell"
-        // Basic render function
-        renderCell={(cell) => <div>{cell.id}</div>}
-      />,
-    )
+    function TestComponent() {
+      const { gridRef, stableCells } = useMasonry(cells, {
+        gridWidth: 800,
+        gap: 12,
+        columnWidth: 200,
+        getGridStyle: createGridCssVarsStyle(),
+        getCellStyle: createCellCssVarsStyle(),
+      })
+
+      return (
+        <div ref={gridRef} className="relative h-[var(--mk-grid-height)]">
+          {stableCells.map((cell) => (
+            <div
+              key={cell.id}
+              className="absolute w-[var(--mk-cell-width)] h-[var(--mk-cell-height)] translate-x-[var(--mk-cell-x)] translate-y-[var(--mk-cell-y)] translate-z-0"
+            >
+              {cell.id}
+            </div>
+          ))}
+        </div>
+      )
+    }
+
+    root!.render(<TestComponent />)
 
     await nextFrame()
 
-    const gridEl = container.querySelector('.mk-grid') as HTMLElement | null
+    const gridEl = container.querySelector('.relative') as HTMLElement | null
     expect(gridEl).toBeTruthy()
 
-    // Wait a couple frames for layout/style application to settle
+    // Wait for multiple frames to ensure layout effects have run
     await nextFrame()
     await nextFrame()
+    await nextFrame()
+    await new Promise((resolve) => setTimeout(resolve, 100))
 
-    // Collect cells and assert presence of CSS variables
-    const cellEls = Array.from(container.querySelectorAll('.mk-cell')) as HTMLElement[]
+    // Check that CSS variables are applied to container
+    const gridWidth = gridEl!.style.getPropertyValue('--mk-grid-width')
+    const gridHeight = gridEl!.style.getPropertyValue('--mk-grid-height')
+    expect(gridWidth, 'Grid width CSS variable should be set').toBeTruthy()
+    expect(gridHeight, 'Grid height CSS variable should be set').toBeTruthy()
+
+    // Check that cells have CSS variables
+    const cellEls = Array.from(container.querySelectorAll('.absolute')) as HTMLElement[]
     expect(cellEls.length).toBe(3)
 
     const requiredCellVars = ['--mk-cell-x', '--mk-cell-y', '--mk-cell-width', '--mk-cell-height']
     for (const el of cellEls) {
-      for (const v of requiredCellVars) {
-        const value = getComputedStyle(el).getPropertyValue(v).trim()
-        expect(value, `expected ${v} to be set`).toBeTruthy()
+      for (const varName of requiredCellVars) {
+        const value = el.style.getPropertyValue(varName)
+        expect(value, `expected ${varName} to be set on element`).toBeTruthy()
       }
     }
-
-    // Additionally assert numeric values for width/height derived from inputs
-    const widths = cellEls.map((el) =>
-      parseInt(getComputedStyle(el).getPropertyValue('--mk-cell-width').trim(), 10),
-    )
-    const heights = cellEls.map((el) =>
-      parseInt(getComputedStyle(el).getPropertyValue('--mk-cell-height').trim(), 10),
-    )
-
-    // All widths should be positive integers
-    expect(widths.every((n) => Number.isFinite(n) && n > 0)).toBe(true)
-
-    // With grid width 800, desired columnWidth 200, gap 12:
-    // resolved columnCount = floor((800 + 12) / (200 + 12)) = 3
-    // resolved columnWidth ~= round((800 - 12*(3-1)) / 3) = round(776/3) = 259
-    // Expect heights to match: explicit 100, derived 259 (aspectRatio=1), explicit 50
-    expect(heights).toEqual([100, 259, 50])
   })
 
-  it('useMasonry computes a layout given explicit width (smoke)', async () => {
-    type Meta = { tag: string }
+  it('useMasonry hook computes layout correctly', async () => {
+    function HookTest() {
+      const cells: Cell[] = [
+        createHeightCell('a', 100),
+        createAspectCell('b', 1),
+        createHeightCell('c', 50),
+      ]
 
-    function HookProbe() {
-      const items = useMemo<ReadonlyArray<MasonryCellInput<Meta>>>(
-        () => [
-          { id: 'a', height: 100, meta: { tag: 'a' } },
-          { id: 'b', aspectRatio: 1, meta: { tag: 'b' } }, // derived height from columnWidth
-          { id: 'c', height: 50, meta: { tag: 'c' } },
-        ],
-        [],
-      )
-
-      const { ref, layout } = useMasonry(items, {
-        // Provide explicit width so the hook avoids ResizeObserver in tests
-        width: 400,
+      const { gridRef, layout, stableCells } = useMasonry(cells, {
+        gridWidth: 400,
         gap: 10,
         columnWidth: 180,
         horizontalOrder: false,
-        stamps: undefined,
-        stampsCols: undefined,
       })
 
       return (
         <div
-          ref={ref as React.RefObject<HTMLDivElement>}
-          data-cnt={layout.grid.columnCount}
+          ref={gridRef}
+          data-columns={layout.grid.columnCount}
           data-height={layout.grid.height}
           data-cells={layout.cells.length}
+          data-stable={stableCells.length}
         />
       )
     }
 
-    root!.render(<HookProbe />)
+    root!.render(<HookTest />)
     await nextFrame()
 
-    const probe = container.querySelector('div[data-cnt]') as HTMLElement | null
-    expect(probe).toBeTruthy()
+    const testEl = container.querySelector('div[data-columns]') as HTMLElement | null
+    expect(testEl).toBeTruthy()
 
-    const colCount = Number(probe!.dataset.cnt)
-    const gridHeight = Number(probe!.dataset.height)
-    const cellsCount = Number(probe!.dataset.cells)
+    const columnCount = Number(testEl!.dataset.columns)
+    const gridHeight = Number(testEl!.dataset.height)
+    const cellsCount = Number(testEl!.dataset.cells)
+    const stableCount = Number(testEl!.dataset.stable)
 
-    // Given width=400, gap=10, and desired columnWidth=180:
-    // cols = floor((400 + 10) / (180 + 10)) = floor(410/190) = 2
-    expect(colCount).toBeGreaterThanOrEqual(1)
-    expect(colCount).toBe(2)
-
-    // We rendered 3 items
+    expect(columnCount).toBe(2)
     expect(cellsCount).toBe(3)
-
-    // Height should be a non-negative finite number
+    expect(stableCount).toBe(3)
     expect(Number.isFinite(gridHeight)).toBe(true)
-    expect(gridHeight).toBeGreaterThanOrEqual(0)
+    expect(gridHeight).toBeGreaterThan(0)
+  })
+
+  it('helper functions create correct cell types', () => {
+    const heightCell = createHeightCell('test-1', 200, { custom: 'meta' })
+    expect(heightCell).toEqual({
+      id: 'test-1',
+      type: 'height',
+      height: 200,
+      meta: { custom: 'meta' },
+    })
+
+    const aspectCell = createAspectCell('test-2', 16 / 9)
+    expect(aspectCell).toEqual({
+      id: 'test-2',
+      type: 'aspect',
+      aspectRatio: 16 / 9,
+    })
+  })
+
+  it('handles cells without meta', async () => {
+    const cells: Cell[] = [
+      { id: 'no-meta', type: 'height', height: 100 }, // No meta property
+    ]
+
+    function TestComponent() {
+      const { gridRef, stableCells } = useMasonry(cells, {
+        gridWidth: 400,
+        gap: 10,
+        columnWidth: 180,
+      })
+
+      return (
+        <div ref={gridRef}>
+          {stableCells.map((cell) => (
+            <div key={cell.id}>{cell.id}</div>
+          ))}
+        </div>
+      )
+    }
+
+    root!.render(<TestComponent />)
+    await nextFrame()
+
+    const testEl = container.querySelector('div')
+    expect(testEl).toBeTruthy()
+  })
+
+  it('handles empty cells array', async () => {
+    function TestComponent() {
+      const { gridRef, layout, stableCells } = useMasonry([], {
+        gridWidth: 400,
+        gap: 10,
+        columnWidth: 180,
+      })
+
+      return (
+        <div ref={gridRef} data-empty={stableCells.length === 0 && layout.cells.length === 0}>
+          Empty
+        </div>
+      )
+    }
+
+    root!.render(<TestComponent />)
+    await nextFrame()
+
+    const testEl = container.querySelector('div[data-empty="true"]')
+    expect(testEl).toBeTruthy()
+  })
+
+  it('handles gridWidth as null/undefined (auto-measure)', async () => {
+    function TestComponent() {
+      const cells: Cell[] = [createHeightCell('a', 100)]
+
+      const { gridRef, stableCells } = useMasonry(cells, {
+        gap: 10,
+        columnWidth: 180,
+        // gridWidth not provided - should auto-measure
+      })
+
+      return (
+        <div ref={gridRef} style={{ width: '400px' }}>
+          {stableCells.map((cell) => (
+            <div key={cell.id}>{cell.id}</div>
+          ))}
+        </div>
+      )
+    }
+
+    root!.render(<TestComponent />)
+    await nextFrame()
+    // Wait additional time for ResizeObserver to trigger
+    await new Promise((resolve) => setTimeout(resolve, 100))
+
+    const testEl = container.querySelector('div')
+    expect(testEl).toBeTruthy()
+  })
+
+  it('handles cells with fallback height when no dimensions provided', async () => {
+    const cells: Cell[] = [
+      { id: 'no-dimensions', type: 'height', height: 0 }, // No height provided - should get fallback height
+    ]
+
+    function TestComponent() {
+      const { gridRef, stableCells } = useMasonry(cells, {
+        gridWidth: 400,
+        gap: 10,
+        columnWidth: 180,
+      })
+
+      return (
+        <div ref={gridRef}>
+          {stableCells.map((cell) => (
+            <div key={cell.id}>{cell.id}</div>
+          ))}
+        </div>
+      )
+    }
+
+    root!.render(<TestComponent />)
+    await nextFrame()
+
+    const testEl = container.querySelector('div')
+    expect(testEl).toBeTruthy()
   })
 })

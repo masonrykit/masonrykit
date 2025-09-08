@@ -7,9 +7,12 @@
  */
 
 import { computeMasonryLayout, observeElementWidth } from '@masonrykit/browser'
-import type { MasonryCellInput } from '@masonrykit/browser'
+import type { Cell } from '@masonrykit/browser'
 
 import './style.css'
+
+// Constants
+const MAX_ITEMS = 200
 
 // Create basic UI structure: header + controls + app container
 const root = document.getElementById('root')
@@ -162,7 +165,7 @@ controls.appendChild(labelPreset)
 labelItems.appendChild(document.createTextNode('Items: '))
 inputItems.type = 'range'
 inputItems.min = '6'
-inputItems.max = '120'
+inputItems.max = String(MAX_ITEMS)
 inputItems.value = '28'
 inputItems.id = 'itemsCount'
 spanItems.id = 'itemsCountValue'
@@ -357,7 +360,7 @@ function updatePresetSelection(): void {
 
 // Demo items: a mix of fixed heights and aspect ratios
 type DemoMeta = { src: string }
-type DemoItem = MasonryCellInput<DemoMeta>
+type DemoItem = Cell<DemoMeta>
 items = createDemoItems(state.itemCount)
 
 function createDemoItems(count: number): DemoItem[] {
@@ -379,6 +382,7 @@ function createDemoItems(count: number): DemoItem[] {
       const ratios = [4 / 3, 1, 16 / 9, 3 / 4, 2, 0.75, 1.25, 1.5, 0.5, 1.1, 1.3]
       out.push({
         id,
+        type: 'aspect' as const,
         aspectRatio: ratios[Math.floor(rnd() * ratios.length)]!,
         ...(i % 9 === 0 ? { columnSpan: 2 } : i % 23 === 0 ? { columnSpan: 3 } : {}),
         meta: { src: img(id) },
@@ -388,6 +392,7 @@ function createDemoItems(count: number): DemoItem[] {
       const h = 80 + Math.floor(rnd() * 240)
       out.push({
         id,
+        type: 'height' as const,
         height: h,
         ...(i % 9 === 0 ? { columnSpan: 2 } : i % 23 === 0 ? { columnSpan: 3 } : {}),
         meta: { src: img(id) },
@@ -586,11 +591,15 @@ inputStamps.addEventListener('change', () => {
 })
 btnAdd.addEventListener('click', () => {
   const add = 12
-  state.itemCount = Math.min(200, state.itemCount + add)
+  const newCount = Math.min(MAX_ITEMS, state.itemCount + add)
+  const actualAdd = newCount - state.itemCount
+  state.itemCount = newCount
   inputItems.value = String(state.itemCount)
   const start = addNonce
-  addNonce += add
-  items = items.concat(createDemoItems(add).map((d, i) => ({ ...d, id: `${d.id}-x${start + i}` })))
+  addNonce += actualAdd
+  items = items.concat(
+    createDemoItems(actualAdd).map((d, i) => ({ ...d, id: `${d.id}-x${start + i}` })),
+  )
   syncLabels()
   requestUpdate()
 })

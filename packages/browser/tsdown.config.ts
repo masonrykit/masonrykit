@@ -8,10 +8,6 @@
  */
 
 import { defineConfig } from 'tsdown'
-import { createRequire } from 'node:module'
-
-const require = createRequire(import.meta.url)
-const pkg = require('./package.json') as { version?: string }
 
 export default defineConfig({
   // Explicit entry for clarity (defaults to src/index.ts if present)
@@ -31,10 +27,4 @@ export default defineConfig({
 
   // Minify only in production to keep DX nice in dev
   minify: process.env.NODE_ENV === 'production',
-
-  // Inject package version for build-time replacement
-  define: {
-    __MK_VERSION__: JSON.stringify(pkg.version),
-    'process.env.MASONRYKIT_VERSION': JSON.stringify(pkg.version),
-  },
 })

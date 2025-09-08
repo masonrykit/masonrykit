@@ -1,7 +1,7 @@
 {
   "name": "@masonrykit/core",
   "version": "0.0.0",
-  "description": "Pure, framework-agnostic math utilities for MasonryKit.",
+  "description": "Pure, framework-agnostic layout computation for masonry grids. Multi-span items, stamps, and deterministic positioning.",
   "license": "MIT",
   "private": false,
   "type": "module",
@@ -29,18 +29,22 @@
     "build": "tsdown --platform node",
     "dev": "tsdown --watch --platform node",
     "test": "vitest run --config vitest.config.ts",
+    "test:coverage": "vitest run --config vitest.config.ts --coverage",
     "test:watch": "vitest --config vitest.config.ts",
     "lint": "eslint .",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "api:extract": "api-extractor run --local"
   },
   "keywords": [
-    "masonrykit",
-    "core",
-    "utilities",
     "masonry",
+    "grid",
+    "layout",
     "waterfall",
-    "typescript"
+    "pinterest",
+    "typescript",
+    "framework-agnostic",
+    "multi-span",
+    "stamps"
   ],
   "repository": {
     "type": "git",

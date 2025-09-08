@@ -2,227 +2,131 @@
  * @masonrykit/core
  *
  * Pure, framework-agnostic utilities to compute Masonry-style grid layouts.
- * - No DOM measurements are performed here; you provide grid width and item sizing.
- * - Pure and deterministic: same inputs => same outputs.
- *
- * @example
- * ```ts
- * const { columnCount, columnWidth } = computeColumns({ gridWidth, columnWidth: 220, gap: 12 })
- * const layout = computeMasonryLayout(items, { gridWidth, columnWidth: 220, gap: 12 })
- * ```
  */
 
-/**
- * Input shape for a Masonry layout item.
- * Height (px) takes precedence; otherwise height is derived from aspectRatio.
- * @public
- */
-/**
- * Input shape for a Masonry layout item.
- * Height (px) takes precedence; otherwise height is derived from aspectRatio.
- * @public
- */
-export type MasonryCellInput<M = undefined> = {
-  /**
-   * Optional stable identifier for the item.
-   */
-  id?: string
-  /**
-   * Optional number of columns this item spans. Defaults to 1. Clamped to [1, columnCount].
-   */
-  columnSpan?: number
-  /**
-   * Free-form metadata you might want to carry through the layout.
-   */
-} & ([M] extends [undefined] ? { meta?: M } : { meta: M }) &
-  (
-    | {
-        /**
-         * Explicit height in pixels.
-         * When provided, aspectRatio must not be specified.
-         */
-        height: number
-        aspectRatio?: never
-      }
-    | {
-        /**
-         * width / height ratio (e.g., 16/9 or 4/3).
-         * Used to derive height when explicit height is not provided.
-         * When provided, height must not be specified.
-         */
-        aspectRatio: number
-        height?: never
-      }
-  )
+export type Meta<M> = [M] extends [undefined] ? { meta?: M } : { meta: M }
 
-/**
- * Pixel-based rectangle that reserves space in the grid.
- * @public
- */
-export type MasonryStamp = {
-  /**
-   * X position from the left edge of the grid (px).
-   */
-  x: number
-  /**
-   * Y position from the top edge of the grid (px).
-   */
-  y: number
-  /**
-   * Rectangle width (px).
-   */
+// Common dimensional types
+export type Dimension = {
   width: number
-  /**
-   * Rectangle height (px).
-   */
   height: number
 }
 
-/**
- * Resolved column system for a given grid width and gap.
- * @public
- */
-export type MasonryResolvedColumns = {
+export type Position = {
+  x: number
+  y: number
+}
+
+export type CellBase<M = undefined> = {
+  id?: string
+  columnSpan?: number
+} & Meta<M>
+
+export type HeightCell<M = undefined> = CellBase<M> & {
+  type: 'height'
+  height: number
+}
+
+export type AspectRatioCell<M = undefined> = CellBase<M> & {
+  type: 'aspect'
+  aspectRatio: number
+}
+
+export type Cell<M = undefined> = HeightCell<M> | AspectRatioCell<M>
+
+export type Stamp = Position & Dimension
+
+export type ColumnConfig = {
   columnCount: number
   columnWidth: number
   gap: number
 }
 
-/**
- * Options for computing a Masonry layout.
- * @public
- */
-export type MasonryOptions = {
-  /**
-   * The grid's inner width in pixels (excluding paddings you don't want to use).
-   */
-  gridWidth: number
-  /**
-   * Horizontal/vertical gap between items (in pixels). Default: 0.
-   */
+export type LayoutOptions = {
+  gridWidth?: number
   gap?: number
-  /**
-   * Provide a desired column width; columns are derived to fit the grid.
-   */
   columnWidth?: number
-  /**
-   * When true, place items in horizontal (row-wise) order, which can be preferable
-   * for certain visual flows. Default: false uses the classic "shortest column" strategy.
-   */
+  columns?: ColumnConfig
   horizontalOrder?: boolean
-  /**
-   * Optional stamps (rectangles) that pre-occupy space in the grid.
-   * Each stamp is applied as a baseline to any overlapped column: baseline = y + height + gap.
-   */
-  stamps?: MasonryStamp[]
+  stamps?: Stamp[]
 }
 
-/**
- * Represents a computed item in the Masonry layout result.
- * @public
- */
-export type MasonryLayoutCell<M = undefined> = {
+export type LayoutCell<M = undefined> = {
   index: number
-  id?: string | undefined
+  id?: string
   column: number
   span: number
-  x: number
-  y: number
-  width: number
-  height: number
-} & ([M] extends [undefined] ? { meta?: M } : { meta: M })
+} & Position &
+  Dimension &
+  Meta<M>
 
-/**
- * Result of a Masonry layout computation: grid info and per-cell geometry.
- * @public
- */
-export type MasonryLayoutResult<M = unknown> = {
-  cells: MasonryLayoutCell<M>[]
-
-  grid: {
-    width: number
-    height: number
-    columnCount: number
-    columnWidth: number
-    gap: number
-  }
+export type GridInfo = Dimension & {
+  columnCount: number
+  columnWidth: number
+  gap: number
 }
 
-/**
- * Compute column count/width for a given grid width and a desired column width.
- *
- * Rules:
- * - Column count is derived from columnWidth and gridWidth.
- * - At least 1 column is always returned.
- *
- * @public
- */
+export type LayoutResult<M = undefined> = {
+  cells: LayoutCell<M>[]
+  grid: GridInfo
+}
+
+// Helper to ensure non-negative values
+const nonNegative = (value: number): number => Math.max(0, value)
+
+// Helper to ensure at least 1
+const atLeastOne = (value: number): number => Math.max(1, value)
+
 export function computeColumns(options: {
-  gridWidth: number
+  gridWidth?: number
   gap?: number
   columnWidth?: number
-}): MasonryResolvedColumns {
-  const gridWidth = Math.max(0, options.gridWidth || 0)
-  const gap = Math.max(0, options.gap ?? 0)
+}): ColumnConfig {
+  const gridWidth = nonNegative(options.gridWidth ?? 0)
+  const gap = nonNegative(options.gap ?? 0)
+  const baseColumnWidth = options.columnWidth ?? (gridWidth > 0 ? gridWidth : 1)
+  const columnWidth = atLeastOne(baseColumnWidth)
 
-  // Derive columnCount from a desired columnWidth (or fallback to 1 column with full width)
-  const targetWidth = Math.max(1, (options.columnWidth ?? gridWidth) || 1)
-  const cols = Math.floor((gridWidth + gap) / (targetWidth + gap))
-  const columnCount = Math.max(1, cols)
-  const totalGaps = gap * Math.max(0, columnCount - 1)
-  const available = Math.max(0, gridWidth - totalGaps)
-  const columnWidth = columnCount > 0 ? available / columnCount : available
+  const cols = Math.floor((gridWidth + gap) / (columnWidth + gap))
+  const columnCount = atLeastOne(cols)
+  const totalGaps = gap * nonNegative(columnCount - 1)
+  const available = nonNegative(gridWidth - totalGaps)
+  const resolvedColumnWidth = columnCount > 0 ? available / columnCount : available
 
   return {
     columnCount,
-    columnWidth,
+    columnWidth: resolvedColumnWidth,
     gap,
   }
 }
 
-/**
- * Computes a Masonry layout.
- *
- * Each cell is placed either:
- * - in the next column (row-wise) if horizontalOrder is true, or
- * - in the column with the current smallest total height (classic Masonry).
- *
- * Cell height is:
- * - `height` if provided, otherwise
- * - `columnWidth / aspectRatio` if `aspectRatio` is provided, otherwise 0.
- * @public
- */
 export function computeMasonryLayout<M = undefined>(
-  cells: readonly MasonryCellInput<M>[],
-  options: MasonryOptions,
-): MasonryLayoutResult<M> {
-  const { columnCount, columnWidth, gap } = computeColumns(options)
+  cells: readonly Cell<M>[],
+  options: LayoutOptions,
+): LayoutResult<M> {
+  const { columnCount, columnWidth, gap } = options.columns
+    ? options.columns
+    : computeColumns(options)
 
-  // Track the running height of each column.
   const columnsHeights = Array.from({ length: columnCount }, () => 0)
+  const out: LayoutCell<M>[] = []
 
-  const out: MasonryLayoutCell<M>[] = []
-
-  // Always round to avoid sub-pixel jitter (no option).
   const r = (v: number) => Math.round(v)
   const cw = r(columnWidth)
   const g = r(gap)
 
-  // Apply stamp baselines to columns before placing items.
-  // Any column whose interior overlaps a stamp gets its baseline raised to (stamp.y + stamp.height + gap).
   if (options.stamps && options.stamps.length > 0) {
     const step = cw + g
     for (const s of options.stamps) {
-      const sx = Math.max(0, s.x)
-      const sy = Math.max(0, s.y)
-      const sw = Math.max(0, s.width)
-      const sh = Math.max(0, s.height)
+      const sx = nonNegative(s.x)
+      const sy = nonNegative(s.y)
+      const sw = nonNegative(s.width)
+      const sh = nonNegative(s.height)
       const sRight = sx + sw
 
       for (let c = 0; c < columnCount; c++) {
         const colLeft = c * step
         const colRight = colLeft + cw
-        // Overlap occurs if stamp rectangle intersects the column's interior area.
         const overlaps = Math.max(colLeft, sx) < Math.min(colRight, sRight)
         if (overlaps) {
           const base = r(sy + sh + g)
@@ -232,7 +136,6 @@ export function computeMasonryLayout<M = undefined>(
     }
   }
 
-  // Optional horizontal (row-wise) ordering
   const horizontal = !!options.horizontalOrder
   let horizontalColIndex = 0
 
@@ -240,24 +143,20 @@ export function computeMasonryLayout<M = undefined>(
     const it = cells[i]
     if (!it) continue
 
-    // Resolve column span and pixel width across columns (including inter-column gaps)
-    const span = Math.max(1, Math.min(columnCount, it.columnSpan ?? 1))
+    const span = atLeastOne(Math.min(columnCount, it.columnSpan ?? 1))
     const itemPixelWidth = span * cw + (span - 1) * g
 
-    // Derive height: explicit height wins; otherwise use aspectRatio against actual pixel width
     const rawHeight =
-      typeof it.height === 'number'
-        ? Math.max(0, it.height)
-        : typeof it.aspectRatio === 'number' && it.aspectRatio > 0
-        ? Math.max(0, itemPixelWidth / it.aspectRatio)
-        : 0
+      it.type === 'height'
+        ? nonNegative(it.height)
+        : it.type === 'aspect' && it.aspectRatio > 0
+          ? nonNegative(itemPixelWidth / it.aspectRatio)
+          : 0
     const h = r(rawHeight)
 
-    // Choose column index and y position
     let col = 0
     let y = 0
 
-    // Helper to compute the baseline for a span range: max of involved column heights
     const rangeHeight = (start: number, spanLen: number) => {
       let maxY = 0
       for (let k = 0; k < spanLen; k++) {
@@ -268,10 +167,7 @@ export function computeMasonryLayout<M = undefined>(
     }
 
     if (horizontal) {
-      // Row-wise placement for spans:
-      // - choose starting column from a running cursor
-      // - wrap to 0 if span exceeds the columnCount near the edge
-      let start = horizontalColIndex % Math.max(1, columnCount)
+      let start = horizontalColIndex % atLeastOne(columnCount)
       if (start + span > columnCount) start = 0
       col = start
       y = rangeHeight(col, span)
@@ -279,11 +175,9 @@ export function computeMasonryLayout<M = undefined>(
         horizontalColIndex += span
       }
     } else {
-      // Classic "shortest column" placement for spans:
-      // Evaluate each valid start (0..columnCount-span), pick the one with smallest range baseline.
       let bestCol = 0
-      let bestY = Number.POSITIVE_INFINITY
-      for (let c = 0; c <= columnCount - span; c++) {
+      let bestY = rangeHeight(0, span)
+      for (let c = 1; c <= columnCount - span; c++) {
         const yCandidate = rangeHeight(c, span)
         if (yCandidate < bestY) {
           bestY = yCandidate
@@ -291,7 +185,7 @@ export function computeMasonryLayout<M = undefined>(
         }
       }
       col = bestCol
-      y = bestY === Number.POSITIVE_INFINITY ? 0 : bestY
+      y = bestY
     }
 
     const x = col * (cw + g)
@@ -306,9 +200,8 @@ export function computeMasonryLayout<M = undefined>(
       width: itemPixelWidth,
       height: h,
       meta: it.meta,
-    } as MasonryLayoutCell<M>)
+    } as LayoutCell<M>)
 
-    // Update the column heights for the spanned range with this item's bottom (including gap)
     const newBottom = y + h + g
     for (let k = 0; k < span; k++) {
       const cIndex = col + k
@@ -316,15 +209,13 @@ export function computeMasonryLayout<M = undefined>(
     }
   }
 
-  // Grid height is the tallest column minus the final trailing gap
-  const tallest = columnsHeights.length ? Math.max(...columnsHeights.map((v) => v ?? 0)) : 0
-  const gridHeight = Math.max(0, tallest - (cells.length > 0 ? g : 0))
+  const tallest = columnsHeights.length ? Math.max(...columnsHeights.map((h) => h ?? 0)) : 0
+  const gridHeight = nonNegative(tallest - (cells.length > 0 ? g : 0))
 
   return {
     cells: out,
-
     grid: {
-      width: options.gridWidth,
+      width: nonNegative(options.gridWidth ?? 0),
       height: r(gridHeight),
       columnCount,
       columnWidth: cw,
@@ -333,25 +224,32 @@ export function computeMasonryLayout<M = undefined>(
   }
 }
 
-/* Browser helpers removed from @masonrykit/core to keep it math-only */
+export type ColumnStamp = {
+  startCol: number
+  span: number
+  y: number
+  height: number
+}
 
-/**
- * Version of the library at build time. Replaced via bundler define.
- * Falls back to process.env when available, otherwise a neutral default.
- */
-declare const __MK_VERSION__: string | undefined
-declare const process:
-  | undefined
-  | {
-      env?: {
-        MASONRYKIT_VERSION?: string
-      }
-    }
-/**
- * Version of the library at build time.
- * @public
- */
-export const VERSION: string =
-  typeof __MK_VERSION__ !== 'undefined'
-    ? __MK_VERSION__
-    : (typeof process !== 'undefined' && process.env?.MASONRYKIT_VERSION) || '0.0.0'
+export function convertColumnStampsToPixel(
+  stampsCols: ColumnStamp[],
+  columns: { columnWidth: number; gap: number },
+): Stamp[] {
+  const stamps: Stamp[] = []
+  const step = columns.columnWidth + columns.gap
+
+  for (const sc of stampsCols) {
+    const span = atLeastOne(Math.floor(sc.span))
+    const x = sc.startCol * step
+    const width = span * columns.columnWidth + (span - 1) * columns.gap
+
+    stamps.push({
+      x: Math.round(x),
+      y: Math.round(sc.y),
+      width: Math.round(width),
+      height: Math.round(sc.height),
+    })
+  }
+
+  return stamps
+}

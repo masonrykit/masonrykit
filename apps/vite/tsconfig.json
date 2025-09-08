@@ -4,7 +4,7 @@
   "compilerOptions": {
     "noEmit": true,
     "composite": false,
-    "types": ["vite/client"],
+    "types": ["vite/client", "node"],
     "lib": ["ES2022", "DOM", "DOM.Iterable"]
   },
   "include": ["src", "vite.config.ts", "index.html"],

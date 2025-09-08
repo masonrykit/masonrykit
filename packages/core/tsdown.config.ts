@@ -12,10 +12,8 @@ import { createRequire } from 'node:module'
 
 const require = createRequire(import.meta.url)
 const pkg = require('./package.json') as {
-  version?: string
   peerDependencies?: Record<string, string>
 }
-const VERSION = pkg.version ?? ''
 const peerDeps = Object.keys(pkg.peerDependencies ?? {})
 
 // Externalize peer dependencies if present
@@ -38,12 +36,6 @@ export default defineConfig({
 
   // Minify only in production to keep DX nice in dev
   minify: process.env.NODE_ENV === 'production',
-
-  // Inject package version for build-time replacement
-  define: {
-    __MK_VERSION__: JSON.stringify(VERSION),
-    'process.env.MASONRYKIT_VERSION': JSON.stringify(VERSION),
-  },
 
   // Don't bundle peer dependencies
   external: peerDeps,

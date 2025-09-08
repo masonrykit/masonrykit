@@ -1,7 +1,7 @@
 {
   "name": "@masonrykit/react",
   "version": "0.0.0",
-  "description": "React components and hooks for MasonryKit.",
+  "description": "Headless React components and hooks for masonry layouts. Complete control over styling and rendering.",
   "license": "MIT",
   "private": false,
   "type": "module",
@@ -29,6 +29,7 @@
     "build": "tsdown --platform browser",
     "dev": "tsdown --watch --platform browser",
     "test": "vitest run --dir .",
+    "test:coverage": "vitest run --dir . --coverage",
     "test:browser": "vitest --browser",
     "test:browser:ui": "vitest --browser --ui",
     "test:browser:headed": "vitest --browser --browser.headless=false",
@@ -49,14 +50,16 @@
     "vitest-browser-react": "1.0.1"
   },
   "keywords": [
-    "masonrykit",
     "masonry",
     "react",
     "grid",
+    "layout",
+    "headless",
+    "component",
+    "hook",
+    "typescript",
     "waterfall",
-    "tsdown",
-    "vitest",
-    "typescript"
+    "pinterest"
   ],
   "repository": {
     "type": "git",

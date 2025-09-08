@@ -18,7 +18,14 @@ const pkg = require('./package.json') as {
 
 const peerDeps = Object.keys(pkg.peerDependencies ?? {})
 // Ensure React is never bundled and also keep the base browser utilities external
-const extraExternals = ['react', 'react-dom', '@masonrykit/browser', '@masonrykit/core']
+const extraExternals = [
+  'react',
+  'react-dom',
+  'react/jsx-runtime',
+  'react/jsx-dev-runtime',
+  '@masonrykit/browser',
+  '@masonrykit/core',
+]
 const external = Array.from(new Set([...peerDeps, ...extraExternals]))
 
 export default defineConfig({

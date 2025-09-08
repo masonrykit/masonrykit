@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { computeMasonryLayout, type MasonryStamp } from '../src/index'
+import { computeMasonryLayout, type Stamp } from '../src/index'
 
 /**
  * Core stamp tests (span=1 items).
@@ -28,16 +28,16 @@ describe('@masonrykit/core - stamps', () => {
     const columnWidth = 45
     const gap = 0
 
-    const stamps: MasonryStamp[] = [
+    const stamps: Stamp[] = [
       { x: 70, y: 10, width: 40, height: 30 },
       { x: -5, y: 0, width: 200, height: 20 },
     ]
 
     const items = [
-      { id: 'a', height: 30 },
-      { id: 'b', height: 30 },
-      { id: 'c', height: 30 },
-      { id: 'd', height: 30 },
+      { id: 'a', type: 'height' as const, height: 30 },
+      { id: 'b', type: 'height' as const, height: 30 },
+      { id: 'c', type: 'height' as const, height: 30 },
+      { id: 'd', type: 'height' as const, height: 30 },
     ] as const
 
     const layout = computeMasonryLayout(items, {
@@ -76,13 +76,13 @@ describe('@masonrykit/core - stamps', () => {
     const columnWidth = 45
     const gap = 0
 
-    const stamps: MasonryStamp[] = [{ x: 45, y: 0, width: 90, height: 30 }]
+    const stamps: Stamp[] = [{ x: 45, y: 0, width: 90, height: 30 }]
 
     const items = [
-      { id: 'a', height: 30 },
-      { id: 'b', height: 30 },
-      { id: 'c', height: 30 },
-      { id: 'd', height: 30 },
+      { id: 'a', type: 'height' as const, height: 30 },
+      { id: 'b', type: 'height' as const, height: 30 },
+      { id: 'c', type: 'height' as const, height: 30 },
+      { id: 'd', type: 'height' as const, height: 30 },
     ] as const
 
     const layout = computeMasonryLayout(items, {
@@ -114,12 +114,12 @@ describe('@masonrykit/core - stamps', () => {
     const columnWidth = 60
     const gap = 0
 
-    const stamps: MasonryStamp[] = [{ x: -10, y: 5, width: 200, height: 10 }]
+    const stamps: Stamp[] = [{ x: -10, y: 5, width: 200, height: 10 }]
 
     const items = [
-      { id: 'a', height: 20 },
-      { id: 'b', height: 20 },
-      { id: 'c', height: 20 },
+      { id: 'a', type: 'height' as const, height: 20 },
+      { id: 'b', type: 'height' as const, height: 20 },
+      { id: 'c', type: 'height' as const, height: 20 },
     ] as const
 
     const layout = computeMasonryLayout(items, {
@@ -150,12 +150,12 @@ describe('@masonrykit/core - stamps', () => {
     const columnWidth = 60
     const gap = 10
 
-    const stamps: MasonryStamp[] = [{ x: 0, y: 0, width: 200, height: 20 }]
+    const stamps: Stamp[] = [{ x: 0, y: 0, width: 200, height: 20 }]
 
     const items = [
-      { id: 'a', height: 10 },
-      { id: 'b', height: 10 },
-      { id: 'c', height: 10 },
+      { id: 'a', type: 'height' as const, height: 10 },
+      { id: 'b', type: 'height' as const, height: 10 },
+      { id: 'c', type: 'height' as const, height: 10 },
     ] as const
 
     const layout = computeMasonryLayout(items, {

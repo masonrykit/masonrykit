@@ -23,9 +23,9 @@ describe('@masonrykit/browser - empty and default column width behavior', () => 
   it('resolves columnWidth to gridWidth when no columnWidth is provided (with items)', () => {
     const gridWidth = 180
     const items = [
-      { id: 'a', height: 10 },
-      { id: 'b', height: 20 },
-      { id: 'c', height: 30 },
+      { id: 'a', type: 'height' as const, height: 10 },
+      { id: 'b', type: 'height' as const, height: 20 },
+      { id: 'c', type: 'height' as const, height: 30 },
     ] as const
 
     const layout = computeMasonryLayout(items, {

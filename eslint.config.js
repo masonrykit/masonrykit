@@ -43,6 +43,19 @@ export default [
       globals: {
         ...globals.es2022,
         ...globals.node,
+      },
+    },
+  },
+
+  // Browser globals for browser-specific code
+  {
+    files: [
+      'apps/**/*.{js,jsx,ts,tsx}',
+      'packages/react/**/*.{js,jsx,ts,tsx}',
+      'packages/browser/**/*.{js,jsx,ts,tsx}',
+    ],
+    languageOptions: {
+      globals: {
         ...globals.browser,
       },
     },

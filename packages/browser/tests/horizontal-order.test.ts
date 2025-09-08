@@ -1,22 +1,22 @@
 import { describe, it, expect } from 'vitest'
 import { computeMasonryLayout } from '../src/index'
-import type { MasonryCellInput } from '../src/index'
+import type { CellInput } from '../src/index'
 
 describe('@masonrykit/browser - horizontalOrder', () => {
   it('places items in row-wise columns: x = (colIndex) * (columnWidth + gap) with no gap', () => {
     const gridWidth = 180
     const columnWidth = 60
     const items = [
-      { height: 70 },
-      { height: 50 },
-      { height: 30 },
-      { height: 30 },
-      { height: 70 },
-      { height: 50 },
-      { height: 30 },
-      { height: 30 },
-      { height: 30 },
-    ] as const satisfies readonly MasonryCellInput[]
+      { type: 'height' as const, height: 70 },
+      { type: 'height' as const, height: 50 },
+      { type: 'height' as const, height: 30 },
+      { type: 'height' as const, height: 30 },
+      { type: 'height' as const, height: 70 },
+      { type: 'height' as const, height: 50 },
+      { type: 'height' as const, height: 30 },
+      { type: 'height' as const, height: 30 },
+      { type: 'height' as const, height: 30 },
+    ] as const satisfies readonly CellInput[]
 
     const layout = computeMasonryLayout(items, {
       gridWidth,
@@ -41,7 +41,9 @@ describe('@masonrykit/browser - horizontalOrder', () => {
     const gridWidth = 210
     const desiredColumnWidth = 60
     const gap = 10
-    const items = new Array(6).fill(0).map((_, i) => ({ height: 30 + (i % 3) * 20 }))
+    const items = new Array(6)
+      .fill(0)
+      .map((_, i) => ({ type: 'height' as const, height: 30 + (i % 3) * 20 }))
 
     const layout = computeMasonryLayout(items, {
       gridWidth,

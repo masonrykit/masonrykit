@@ -3,15 +3,26 @@ import { defineConfig } from 'vitest/config'
 /**
  * Vitest config for @masonrykit/browser
  *
- * - Unit tests run in Node (no DOM globals).
+ * - Tests run in browser environment with Playwright for real browser APIs
+ * - Core layout tests still run in Node environment for speed
  */
 
 export default defineConfig({
   test: {
-    // Run tests only from dedicated test directories (TypeScript only)
+    // Include both Node.js tests and browser tests
     include: ['tests/**/*.{test,spec}.ts', '__tests__/**/*.{test,spec}.ts'],
-    // Node environment for unit tests (faster, no JSDOM)
-    environment: 'node',
+
+    // Use browser mode for browser-utils tests
+    browser: {
+      enabled: true,
+      provider: 'playwright',
+      headless: true,
+      instances: [
+        {
+          browser: 'chromium',
+        },
+      ],
+    },
 
     clearMocks: true,
     restoreMocks: true,

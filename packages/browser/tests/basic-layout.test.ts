@@ -21,11 +21,11 @@ import { computeMasonryLayout } from '../src/index'
 
 function makeItems() {
   return [
-    { id: 'i0', height: 30 },
-    { id: 'i1', height: 90 },
-    { id: 'i2', height: 70 },
-    { id: 'i3', height: 70 },
-    { id: 'i4', height: 30 },
+    { id: 'i0', type: 'height' as const, height: 30 },
+    { id: 'i1', type: 'height' as const, height: 90 },
+    { id: 'i2', type: 'height' as const, height: 70 },
+    { id: 'i3', type: 'height' as const, height: 70 },
+    { id: 'i4', type: 'height' as const, height: 30 },
   ] as const
 }
 

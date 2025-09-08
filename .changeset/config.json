@@ -1,17 +1,11 @@
 {
   "$schema": "https://unpkg.com/@changesets/config/schema.json",
-  "changelog": [
-    "@changesets/changelog-github",
-    { "repo": "masonrykit/masonrykit" }
-  ],
+  "changelog": ["@changesets/changelog-github", { "repo": "masonrykit/masonrykit" }],
   "commit": false,
   "fixed": [],
   "linked": [],
   "access": "public",
   "baseBranch": "main",
   "updateInternalDependencies": "patch",
-  "ignore": [
-    "@masonrykit/app-vite",
-    "@masonrykit/app-vite-react"
-  ]
+  "ignore": ["@masonrykit/app-vite", "@masonrykit/app-vite-react"]
 }

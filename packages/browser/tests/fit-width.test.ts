@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { computeMasonryLayout } from '../src/index'
-import type { MasonryCellInput } from '../src/index'
+import type { CellInput } from '../src/index'
 
 /**
  * Fit-width-like tests
@@ -25,10 +25,10 @@ describe('@masonrykit/browser - fit-width-like math', () => {
     const desiredColumnWidth = 60
 
     const items = [
-      { height: 30 },
-      { height: 50 },
-      { height: 30 },
-    ] as const satisfies readonly MasonryCellInput[]
+      { type: 'height' as const, height: 30 },
+      { type: 'height' as const, height: 50 },
+      { type: 'height' as const, height: 30 },
+    ] as const satisfies readonly CellInput[]
 
     const layout = computeMasonryLayout(items, {
       gridWidth,
@@ -60,10 +60,10 @@ describe('@masonrykit/browser - fit-width-like math', () => {
     const gap = 0
 
     const items = [
-      { height: 30 },
-      { height: 30 },
-      { height: 30 },
-    ] as const satisfies readonly MasonryCellInput[]
+      { type: 'height' as const, height: 30 },
+      { type: 'height' as const, height: 30 },
+      { type: 'height' as const, height: 30 },
+    ] as const satisfies readonly CellInput[]
 
     const layout = computeMasonryLayout(items, {
       gridWidth,
@@ -99,11 +99,11 @@ describe('@masonrykit/browser - fit-width-like math', () => {
     const desiredColumnWidth = 54
 
     const items = [
-      { height: 40 },
-      { height: 20 },
-      { height: 10 },
-      { height: 30 },
-    ] as const satisfies readonly MasonryCellInput[]
+      { type: 'height' as const, height: 40 },
+      { type: 'height' as const, height: 20 },
+      { type: 'height' as const, height: 10 },
+      { type: 'height' as const, height: 30 },
+    ] as const satisfies readonly CellInput[]
 
     const layout = computeMasonryLayout(items, {
       gridWidth,

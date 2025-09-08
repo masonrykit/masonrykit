@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { computeMasonryLayout } from '../src/index'
-import type { MasonryCellInput } from '../src/index'
+import type { CellInput } from '../src/index'
 
 /**
  * Pixel rounding tests
@@ -28,10 +28,10 @@ describe('@masonrykit/browser - pixel rounding with aspect-ratio-derived heights
     // Three items, all using aspectRatio for height derivation
     // Using varied ratios so rounded heights shift over the range.
     const items = [
-      { id: 'a', aspectRatio: 2 }, // h ~ cw / 2
-      { id: 'b', aspectRatio: 3 }, // h ~ cw / 3
-      { id: 'c', aspectRatio: 1.5 }, // h ~ cw / 1.5
-    ] as const satisfies readonly MasonryCellInput[]
+      { id: 'a', type: 'aspect' as const, aspectRatio: 2 }, // h ~ cw / 2
+      { id: 'b', type: 'aspect' as const, aspectRatio: 3 }, // h ~ cw / 3
+      { id: 'c', type: 'aspect' as const, aspectRatio: 1.5 }, // h ~ cw / 1.5
+    ] as const satisfies readonly CellInput[]
 
     for (let gridWidth = 172; gridWidth <= 230; gridWidth++) {
       const layout = computeMasonryLayout(items, {
@@ -68,11 +68,11 @@ describe('@masonrykit/browser - pixel rounding with aspect-ratio-derived heights
     const gap = 5
 
     const items = [
-      { id: 'i1', aspectRatio: 2.2 }, // varied ARs to produce fractional heights
-      { id: 'i2', aspectRatio: 2.8 },
-      { id: 'i3', aspectRatio: 1.7 },
-      { id: 'i4', aspectRatio: 3.3 },
-    ] as const satisfies readonly MasonryCellInput[]
+      { id: 'i1', type: 'aspect' as const, aspectRatio: 2.2 }, // varied ARs to produce fractional heights
+      { id: 'i2', type: 'aspect' as const, aspectRatio: 2.8 },
+      { id: 'i3', type: 'aspect' as const, aspectRatio: 1.7 },
+      { id: 'i4', type: 'aspect' as const, aspectRatio: 3.3 },
+    ] as const satisfies readonly CellInput[]
 
     for (let gridWidth = 172; gridWidth <= 230; gridWidth++) {
       const layout = computeMasonryLayout(items, {

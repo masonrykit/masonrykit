@@ -22,7 +22,6 @@ export default defineConfig({
       instances: [
         {
           browser: 'chromium',
-          setupFiles: ['./src/setupTests.js'],
         },
       ],
     },

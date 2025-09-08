@@ -1,143 +1,113 @@
 # MasonryKit
 
-![MasonryKit Logo](./assets/logo.svg)
-
-MasonryKit is a TypeScript-first monorepo that provides:
-- `@masonrykit/browser`: lightweight, framework-agnostic utilities for computing Masonry-style grid layouts.
-- `@masonrykit/react`: React components and hooks built on top of the browser utilities.
-
-It uses pnpm workspaces, tsdown for library bundling, Vitest for testing, and ESLint 9 (flat config) for linting.
+TypeScript-first monorepo providing framework-agnostic utilities and React components for Masonry-style grid layouts.
 
 ## Packages
 
-- `packages/browser` — `@masonrykit/browser`
-- `packages/react` — `@masonrykit/react`
+- **[@masonrykit/core](./packages/core/)** — Pure, framework-agnostic layout computation
+- **[@masonrykit/browser](./packages/browser/)** — Browser utilities and width observation
+- **[@masonrykit/react](./packages/react/)** — Headless React components and hooks
 
+## Features
 
+✨ **Framework-agnostic** — Core math works anywhere JavaScript runs  
+🎯 **Headless components** — Complete control over styling and rendering  
+📏 **Multi-span items** — Items can span multiple columns  
+🎨 **Column stamps** — Reserve space with column-aligned rectangles  
+⚡ **TypeScript-first** — Full type safety and IntelliSense  
+📦 **Tree-shakeable** — ESM + CJS exports with optimal bundle size
 
-## Monorepo layout
+## Quick Install
 
+```bash
+# Framework-agnostic core
+npm install @masonrykit/core
+
+# Browser utilities (includes core)
+npm install @masonrykit/browser
+
+# React components (includes browser + core)
+npm install @masonrykit/react react react-dom
 ```
+
+## Architecture
+
+```text
+@masonrykit/core        # Pure layout algorithms
+    ↓
+@masonrykit/browser     # + Browser utilities
+    ↓
+@masonrykit/react       # + React bindings
+```
+
+Each package builds on the previous layer — use exactly what you need.
+
+## Development
+
+Prerequisites: Node.js ≥ 22.12.0, pnpm ≥ 9.0.0
+
+```bash
+pnpm install    # Install dependencies
+pnpm build      # Build all packages
+pnpm test       # Run all tests
+pnpm dev        # Watch mode
+```
+
+## Demos
+
+Interactive examples showcasing the libraries:
+
+- **[Vite Demo](./apps/vite/)** — Vanilla JavaScript implementation
+- **[React Demo](./apps/vite-react/)** — Full-featured React example
+
+Run demos locally:
+
+```bash
+pnpm dev:vite        # Vanilla demo
+pnpm dev:vite-react  # React demo
+```
+
+## Documentation
+
+Each package has detailed documentation:
+
+- **[@masonrykit/core](./packages/core/README.md)** — Layout algorithms, types, and examples
+- **[@masonrykit/browser](./packages/browser/README.md)** — Browser utilities and integration guides
+- **[@masonrykit/react](./packages/react/README.md)** — React components, hooks, and styling approaches
+
+## Monorepo Structure
+
+```text
 masonrykit/
-  packages/
-    browser/
-      src/
-      tsdown.config.ts
-      tsconfig.json
-      package.json
-    react/
-      src/
-      tsdown.config.ts
-      tsconfig.json
-      package.json
-  eslint.config.js
-  tsconfig.base.json
-  vitest.config.ts
-  package.json
-  README.md
+├── packages/
+│   ├── core/          # @masonrykit/core
+│   ├── browser/       # @masonrykit/browser
+│   └── react/         # @masonrykit/react
+├── apps/
+│   ├── vite/          # Vanilla JS demo
+│   └── vite-react/    # React demo
+└── ...
 ```
 
+## Scripts
 
+Run from repository root:
 
-## Getting started
+```bash
+pnpm build              # Build all packages
+pnpm test               # Test all packages
+pnpm lint               # Lint all packages
+pnpm typecheck          # TypeScript check all packages
 
-Prerequisites:
-- Node.js ≥ 18.18.0
-- pnpm ≥ 9
+# Development
+pnpm dev                # Watch all packages
+pnpm dev:vite           # Run vanilla demo
+pnpm dev:vite-react     # Run React demo
 
-Install dependencies:
+# Release
+pnpm changeset          # Create changeset
+pnpm release            # Version and publish
 ```
-pnpm install
-```
-
-
-Common scripts (run at repo root):
-- Build all: `pnpm build`
-- Dev (watch) all: `pnpm dev`
-- Test all (Vitest): `pnpm test`
-- Lint all (ESLint 9): `pnpm lint`
-- Typecheck all (tsc): `pnpm typecheck`
-- Format (Prettier): `pnpm format`
-
-## Install (per package)
-
-- Browser utilities:
-  ```
-  pnpm add @masonrykit/browser
-  ```
-
-
-- React bindings (peer deps required):
-  ```
-  pnpm add @masonrykit/react react react-dom
-  ```
-
-
-## Usage
-
-### @masonrykit/browser
-
-Compute columns and a Masonry layout with pure functions. You provide grid width and either a column count or desired column width. Also re-exports core math and observeElementWidth for browser width observation.
-
-
-
-Key points:
-- Height is taken from `item.height`, or derived from `columnWidth / aspectRatio` when `aspectRatio` is provided.
-- Items are placed in the current shortest column.
-- All computations are pure and deterministic.
-
-### @masonrykit/react
-
-Render a Masonry layout in React using a writer-based API (setCellStyle/setGridStyle). The component measures its own grid unless a fixed `width` is provided.
-
-
-
-Or use the hook directly:
-
-
-
-## Docs
-
-Documentation site coming soon. Refer to the package READMEs in the meantime.
-
-
-
-
-
-
-
-
-
-
-
-## Release (Changesets + npm)
-
-This repo uses Changesets to manage versions and publish to npm.
-
-- Create a changeset for your changes:
-  ```
-  pnpm changeset
-  ```
-
-- Version and publish:
-  ```
-  pnpm run release
-  ```
-
-  This will:
-  - apply changeset versions
-  - re-install to update the lockfile
-  - build all packages
-  - publish to npm
-
-Notes:
-- Packages are published as public.
-- Peer dependencies remain as flexible ranges (consumers bring their own React).
-- Package exports are aligned to ESM (dist/index.js) and CJS (dist/index.cjs).
-
-
-
-
 
 ## License
 

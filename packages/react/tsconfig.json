@@ -4,8 +4,11 @@
   "compilerOptions": {
     "outDir": "./dist",
     "composite": true,
-    "rootDir": "../../"
+    "rootDir": ".",
+    "noEmit": false,
+    "allowImportingTsExtensions": false
   },
-  "include": ["src", "test", "tests", "__tests__", "../browser/src"],
-  "exclude": ["dist", "build", "node_modules"]
+  "include": ["src", "test", "tests", "__tests__"],
+  "exclude": ["dist", "build", "node_modules"],
+  "references": [{ "path": "../core" }, { "path": "../browser" }]
 }

@@ -19,6 +19,7 @@
     "dev": "pnpm -r --parallel dev",
     "clean": "pnpm -r clean",
     "test": "pnpm -r test",
+    "test:coverage": "pnpm -r test:coverage",
     "lint": "pnpm -r lint",
     "typecheck": "pnpm -r typecheck",
     "docs": "pnpm -r docs",
@@ -35,7 +36,7 @@
     "test:react:ui": "pnpm --filter @masonrykit/react run test:browser:ui",
     "test:react:headed": "pnpm --filter @masonrykit/react run test:browser:headed",
     "test:react:preview:ui": "pnpm --filter @masonrykit/react run test:preview:ui",
-    "test:core": "pnpm --filter @masonrykit/browser test",
+    "test:core": "pnpm --filter @masonrykit/core test",
     "test:install:browsers": "pnpm exec playwright install",
     "changeset": "changeset",
     "release:version": "changeset version && pnpm install",
@@ -43,7 +44,11 @@
     "release": "pnpm run release:version && pnpm run release:publish",
     "api:extract": "echo \"api:extract disabled\"",
     "api:md": "echo \"api:md disabled\"",
-    "api": "echo \"api disabled\""
+    "api": "echo \"api disabled\"",
+    "analyze:bundle": "pnpm -r exec -- du -sh dist 2>/dev/null | sort -hr || echo 'No dist directories found'",
+    "analyze:deps": "pnpm ls --depth=0",
+    "analyze:outdated": "pnpm outdated --recursive",
+    "benchmark": "node scripts/benchmark.js"
   },
   "devDependencies": {
     "@eslint/js": "9.35.0",

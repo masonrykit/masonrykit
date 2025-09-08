@@ -1,7 +1,7 @@
 {
   "name": "@masonrykit/browser",
   "version": "0.0.0",
-  "description": "Lightweight browser utilities for MasonryKit.",
+  "description": "Framework-agnostic browser utilities for masonry layouts. Width observation, column stamps, and CSS helpers.",
   "license": "MIT",
   "private": false,
   "type": "module",
@@ -37,6 +37,7 @@
     "build": "tsdown --platform browser",
     "dev": "tsdown --watch --platform browser",
     "test": "vitest run --config vitest.config.ts",
+    "test:coverage": "vitest run --config vitest.config.ts --coverage",
     "test:watch": "vitest --config vitest.config.ts",
     "lint": "eslint .",
     "typecheck": "tsc -p tsconfig.json --noEmit",
@@ -44,12 +45,15 @@
     "api:extract": "api-extractor run --local"
   },
   "keywords": [
-    "masonrykit",
+    "masonry",
+    "grid",
+    "layout",
     "browser",
-    "utilities",
-    "tsdown",
-    "vitest",
-    "typescript"
+    "resize-observer",
+    "responsive",
+    "typescript",
+    "framework-agnostic",
+    "stamps"
   ],
   "repository": {
     "type": "git",
