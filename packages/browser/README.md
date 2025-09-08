@@ -13,9 +13,40 @@ pnpm add @masonrykit/browser
 ```
 
 ## Usage
-## Quick start
 
+Re-exported core utilities:
+```ts
+import { computeColumns, computeMasonryLayout } from '@masonrykit/browser'
+```
 
+Browser width observation:
+```ts
+import { observeElementWidth } from '@masonrykit/browser'
+
+const stop = observeElementWidth(gridEl, (width) => {
+  // compute layout with width
+})
+
+// later:
+// stop()
+```
+
+Quick start example:
+```ts
+import { computeColumns, computeMasonryLayout } from '@masonrykit/browser'
+
+const columns = computeColumns({ gridWidth: 800, columnWidth: 200, gap: 12 })
+const items = [
+  { id: 'a', height: 100, meta: { src: '/a.jpg' } },
+  { id: 'b', aspectRatio: 1, meta: { src: '/b.jpg' } },
+] as const
+
+const layout = computeMasonryLayout(items, {
+  gridWidth: 800,
+  columnWidth: columns.columnWidth,
+  gap: columns.gap,
+})
+```
 
 ## Scripts
 

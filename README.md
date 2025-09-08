@@ -77,7 +77,7 @@ Common scripts (run at repo root):
 
 ### @masonrykit/browser
 
-Compute columns and a Masonry layout with pure functions. You provide grid width and either a column count or desired column width.
+Compute columns and a Masonry layout with pure functions. You provide grid width and either a column count or desired column width. Also re-exports core math and observeElementWidth for browser width observation.
 
 
 
@@ -88,7 +88,7 @@ Key points:
 
 ### @masonrykit/react
 
-Render a Masonry layout in React. The component measures its own grid unless a fixed `gridWidth` is provided.
+Render a Masonry layout in React using a writer-based API (setCellStyle/setGridStyle). The component measures its own grid unless a fixed `width` is provided.
 
 
 
