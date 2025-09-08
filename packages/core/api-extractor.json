@@ -1,0 +1,37 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/api-extractor/v7/api-extractor.schema.json",
+
+  "mainEntryPointFilePath": "<projectFolder>/dist/index.d.ts",
+
+  "compiler": {
+    "tsconfigFilePath": "./tsconfig.json"
+  },
+
+  "apiReport": {
+    "enabled": true,
+    "reportFileName": "@masonrykit-core.api.md",
+    "reportFolder": "../../config/api-reports"
+  },
+
+  "docModel": {
+    "enabled": true,
+    "apiJsonFilePath": "../../temp/core.api.json"
+  },
+
+  "dtsRollup": {
+    "enabled": false
+  },
+
+  "messages": {
+    "extractorMessageReporting": {
+      "ae-internal-missing-underscore": {
+        "logLevel": "warning"
+      }
+    }
+  },
+
+  "newlineKind": "lf",
+  "tsdocMetadata": {
+    "enabled": false
+  }
+}

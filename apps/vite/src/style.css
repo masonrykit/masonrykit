@@ -1,0 +1,554 @@
+:root {
+  color-scheme: light dark;
+
+  /* Theme */
+  --mk-bg: linear-gradient(180deg, #0b1020 0%, #0f172a 60%, #111827 100%);
+  --mk-fg: #e5e7eb;
+
+  /* Surfaces */
+  --surface: rgba(15, 23, 42, 0.35);
+  --surface-strong: rgba(2, 6, 23, 0.7);
+  --surface-border: rgba(148, 163, 184, 0.15);
+  --surface-border-strong: rgba(148, 163, 184, 0.25);
+
+  /* Elevation + radii */
+  --shadow-lg: 0 10px 30px rgba(2, 6, 23, 0.6);
+  --shadow-md: 0 8px 18px rgba(2, 6, 23, 0.45);
+  --shadow-sm: 0 4px 10px rgba(2, 6, 23, 0.35);
+  --radius-lg: 16px;
+  --radius-md: 12px;
+  --radius-sm: 8px;
+
+  /* Brand */
+  --brand: #06b6d4;
+  --brand-700: #0891b2;
+  --brand-500: #06b6d4;
+  --brand-300: #67e8f9;
+
+  /* Masonry defaults (overridden by JS) */
+  --mk-item-radius: 12px;
+  --mk-item-shadow: 0 6px 18px rgba(2, 6, 23, 0.45);
+  --mk-item-border: 1px solid var(--surface-border);
+  --mk-item-fg: var(--mk-fg);
+
+  --mk-app-transition-duration: 220ms;
+  --mk-app-transition-easing: cubic-bezier(0.2, 0.8, 0.2, 1);
+
+  --mk-cell-width: 260px;
+  --mk-cell-gap: 0px;
+
+  /* App variable aliases */
+  --mk-app-bg: var(--mk-bg);
+  --mk-app-fg: var(--mk-fg);
+  --mk-app-surface: var(--surface);
+  --mk-app-surface-strong: var(--surface-strong);
+  --mk-app-surface-border: var(--surface-border);
+  --mk-app-surface-border-strong: var(--surface-border-strong);
+  --mk-app-shadow-lg: var(--shadow-lg);
+  --mk-app-shadow-md: var(--shadow-md);
+  --mk-app-shadow-sm: var(--shadow-sm);
+  --mk-app-radius-lg: var(--radius-lg);
+  --mk-app-radius-md: var(--radius-md);
+  --mk-app-radius-sm: var(--radius-sm);
+  --mk-app-brand-500: var(--brand-500);
+}
+
+/* Light mode refinements */
+
+/* Transition kill switch for first paint (toggled by JS) */
+.no-transitions *,
+.no-transitions *::before,
+.no-transitions *::after {
+  transition: none !important;
+}
+
+/* Page baseline */
+html,
+body {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  font-family:
+    system-ui,
+    -apple-system,
+    Segoe UI,
+    Roboto,
+    Ubuntu,
+    Cantarell,
+    Noto Sans,
+    Helvetica Neue,
+    Arial,
+    'Apple Color Emoji',
+    'Segoe UI Emoji';
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+
+  /* Glassy gradient backdrop */
+  background: var(--mk-app-bg);
+  background-attachment: fixed;
+  color: var(--mk-app-fg);
+}
+
+/* Sticky header created by main.ts */
+header {
+  padding: 18px 20px;
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  background: var(--mk-app-surface-strong);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid var(--mk-app-surface-border);
+  box-shadow: 0 1px 0 var(--mk-app-surface-border);
+}
+
+header .title {
+  font-weight: 800;
+  letter-spacing: 0.25px;
+  font-size: 1.12rem;
+  margin-bottom: 2px;
+}
+
+header .subtitle {
+  opacity: 0.85;
+  font-size: 0.94rem;
+  margin-top: 2px;
+}
+
+/* Header topbar (first child in header) */
+.mk-app-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+/* Brand (first child inside the topbar) */
+.mk-app-brand {
+  font-weight: 800;
+  letter-spacing: 0.3px;
+  opacity: 0.95;
+}
+
+/* Root content padding */
+main {
+  padding: 20px;
+  max-width: 1200px;
+  margin-left: auto;
+  margin-right: auto;
+  box-sizing: border-box;
+  animation: mk-fade-in 320ms var(--mk-transition-easing) 10ms both;
+}
+
+/* Optional wrapper for responsive centering */
+.page {
+  width: 100%;
+  max-width: 1200px;
+  margin-left: auto;
+  margin-right: auto;
+  padding-left: 16px;
+  padding-right: 16px;
+  box-sizing: border-box;
+}
+
+/* The masonry grid built by main.ts */
+.mk-app-grid {
+  position: relative;
+  width: 100%;
+  min-height: 320px;
+  margin: 0 auto;
+  max-width: 1200px;
+  box-sizing: border-box;
+  height: var(--mk-grid-h, auto);
+
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.02), rgba(255, 255, 255, 0) 60%),
+    var(--mk-app-surface);
+  border: 1px solid var(--mk-app-surface-border);
+  border-radius: var(--mk-app-radius-lg);
+  padding: calc(var(--mk-cell-gap, 0px) + 16px);
+  box-shadow: var(--mk-app-shadow-lg);
+  transition:
+    border-color var(--mk-app-transition-duration) var(--mk-app-transition-easing),
+    box-shadow var(--mk-app-transition-duration) var(--mk-app-transition-easing),
+    background-color var(--mk-app-transition-duration) var(--mk-app-transition-easing);
+}
+
+/* Grid cells (built once, animated via geometry changes) */
+/* Shared cell styles */
+.mk-grid > .mk-cell,
+.mk-grid-gpu > .mk-cell {
+  position: absolute;
+  box-sizing: border-box;
+  border-radius: var(--mk-item-radius);
+  box-shadow: var(--mk-item-shadow);
+  border: var(--mk-item-border);
+  color: var(--mk-item-fg);
+  width: var(--mk-cell-w, auto);
+  height: var(--mk-cell-h, auto);
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+  user-select: none;
+  text-transform: uppercase;
+
+  /* Background is set via CSS vars from JS:
+     --mk-bg-start, --mk-bg-end on each item node */
+  background: linear-gradient(135deg, var(--mk-bg-start, #38bdf833), var(--mk-bg-end, #38bdf855));
+
+  overflow: hidden;
+  isolation: isolate;
+}
+
+/* Top/left mode (position via left/top) */
+.mk-grid > .mk-cell {
+  left: var(--mk-cell-x, 0px);
+  top: var(--mk-cell-y, 0px);
+  transform: none;
+
+  /* Smooth transitions when geometry updates */
+  will-change: left, top, width, height, transform, box-shadow, filter;
+  transition:
+    left var(--mk-app-transition-duration) var(--mk-app-transition-easing),
+    top var(--mk-app-transition-duration) var(--mk-app-transition-easing),
+    width var(--mk-app-transition-duration) var(--mk-app-transition-easing),
+    height var(--mk-app-transition-duration) var(--mk-app-transition-easing),
+    transform var(--mk-app-transition-duration) var(--mk-app-transition-easing),
+    opacity var(--mk-app-transition-duration) var(--mk-app-transition-easing),
+    box-shadow var(--mk-app-transition-duration) var(--mk-app-transition-easing),
+    filter var(--mk-app-transition-duration) var(--mk-app-transition-easing);
+}
+
+/* GPU mode (translate3d positioning) */
+.mk-grid-gpu > .mk-cell {
+  left: 0;
+  top: 0;
+  transform: translate3d(var(--mk-cell-x, 0px), var(--mk-cell-y, 0px), 0);
+
+  will-change: left, top, width, height, box-shadow, filter, transform;
+  transition:
+    /* transform transition removed; compose only in .mk-cell-inner */
+    width var(--mk-app-transition-duration) var(--mk-app-transition-easing),
+    height var(--mk-app-transition-duration) var(--mk-app-transition-easing),
+    opacity var(--mk-app-transition-duration) var(--mk-app-transition-easing),
+    box-shadow var(--mk-app-transition-duration) var(--mk-app-transition-easing),
+    filter var(--mk-app-transition-duration) var(--mk-app-transition-easing),
+    transform var(--mk-app-transition-duration) var(--mk-app-transition-easing);
+}
+/* mk-grid GPU pseudo-element and interaction styles */
+.mk-grid > .mk-cell::after,
+.mk-grid-gpu > .mk-cell::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0));
+  pointer-events: none;
+  mix-blend-mode: soft-light;
+}
+
+.mk-grid > .mk-cell:hover,
+.mk-grid-gpu > .mk-cell:hover {
+  --mk-app-lift: -3px;
+  box-shadow:
+    0 14px 30px rgba(2, 6, 23, 0.5),
+    0 0 0 1px var(--mk-app-surface-border);
+}
+
+.mk-grid > .mk-cell:focus-within,
+.mk-grid-gpu > .mk-cell:focus-within {
+  outline: 2px solid rgba(148, 163, 184, 0.35);
+  outline-offset: -2px;
+}
+
+.mk-grid > .mk-cell img,
+.mk-grid-gpu > .mk-cell img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: inherit;
+  transition:
+    transform var(--mk-app-transition-duration) var(--mk-app-transition-easing),
+    filter var(--mk-app-transition-duration) var(--mk-app-transition-easing);
+}
+
+.mk-grid > .mk-cell:hover img,
+.mk-grid-gpu > .mk-cell:hover img {
+  transform: scale(1.02);
+  filter: saturate(1.06) brightness(1.02);
+}
+
+.mk-grid > .mk-cell .mk-content,
+.mk-grid-gpu > .mk-cell .mk-content {
+  position: absolute;
+  inset: 0;
+  display: block;
+  transform: translateY(var(--mk-app-lift, 0));
+  will-change: transform;
+  transition: transform var(--mk-app-transition-duration) var(--mk-app-transition-easing);
+}
+
+.mk-grid > .mk-cell .mk-caption,
+.mk-grid-gpu > .mk-cell .mk-caption {
+  position: absolute;
+  left: calc(var(--mk-cell-gap, 0px) * 0.5 + 6px);
+  right: calc(var(--mk-cell-gap, 0px) * 0.5 + 6px);
+  bottom: calc(var(--mk-cell-gap, 0px) * 0.5 + 6px);
+  padding: 6px 8px;
+  font-size: 12px;
+  border-radius: 8px;
+  background: rgba(2, 6, 23, 0.55);
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  color: #cbd5e1;
+  pointer-events: none;
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.4);
+}
+
+/* Images inside cells (created in JS) */
+
+/* Content container fills the cell */
+.mk-grid > .mk-cell .mk-cell-inner,
+.mk-grid-gpu > .mk-cell .mk-cell-inner {
+  position: absolute;
+  inset: 0;
+  display: block;
+  /* animate opacity only to avoid overriding GPU translate3d on outer cell */
+  animation: mk-pop-in 320ms var(--mk-app-transition-easing) both;
+}
+
+/* Caption overlay inside each cell */
+
+/* Footer info badge inside the grid */
+.mk-app-info {
+  position: absolute;
+  right: 8px;
+  bottom: 8px;
+  padding: 6px 10px;
+  font-size: 12px;
+  border-radius: 6px;
+  background: rgba(2, 6, 23, 0.55);
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  color: #cbd5e1;
+  pointer-events: none;
+}
+
+/* Controls area created by main.ts */
+.mk-app-controls {
+  display: flex;
+  gap: 12px 16px;
+  align-items: flex-start;
+  margin-bottom: 18px;
+  flex-wrap: wrap;
+  padding: 12px 14px;
+  border-radius: var(--mk-app-radius-md);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.02));
+  border: 1px solid var(--mk-app-surface-border);
+  box-shadow: var(--shadow-sm);
+}
+
+.mk-app-controls label {
+  font-size: 0.95rem;
+  opacity: 0.95;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* Little value badges for span#*Value */
+.mk-app-controls span[id$='Value'] {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 2ch;
+  padding: 2px 8px;
+  font-size: 0.86rem;
+  border-radius: 999px;
+  background: rgba(2, 6, 23, 0.6);
+  border: 1px solid var(--mk-app-surface-border-strong);
+  color: var(--mk-app-fg);
+}
+
+/* Slider styling (cross-browser, simplified) */
+.mk-app-controls input[type='range'] {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 180px;
+  height: 26px;
+  background: transparent;
+  margin: 0;
+  padding: 0;
+}
+
+.mk-app-controls input[type='range']:disabled {
+  opacity: 0.6;
+}
+
+/* WebKit */
+.mk-app-controls input[type='range']::-webkit-slider-runnable-track {
+  height: 8px;
+  background: rgba(148, 163, 184, 0.25);
+  border-radius: 999px;
+  box-shadow: inset 0 0 0 1px var(--mk-app-surface-border);
+}
+
+.mk-app-controls input[type='range']::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 18px;
+  height: 18px;
+  margin-top: -5px; /* centers thumb on 8px track */
+  border-radius: 50%;
+  background: #ffffff;
+  border: 1px solid var(--mk-app-surface-border-strong);
+  box-shadow: 0 1px 2px rgba(2, 6, 23, 0.35);
+  transition:
+    transform 120ms ease,
+    box-shadow 160ms ease,
+    border-color 160ms ease;
+  cursor: pointer;
+}
+
+.mk-app-controls input[type='range']:hover::-webkit-slider-thumb {
+  box-shadow: 0 2px 4px rgba(2, 6, 23, 0.45);
+}
+
+.mk-app-controls input[type='range']:active::-webkit-slider-thumb {
+  transform: scale(0.98);
+}
+
+.mk-app-controls input[type='range']:focus-visible {
+  outline: none;
+}
+
+.mk-app-controls input[type='range']:focus-visible::-webkit-slider-thumb {
+  border-color: var(--mk-app-brand-500);
+  box-shadow: 0 0 0 3px rgba(6, 182, 212, 0.35);
+}
+
+/* Firefox */
+.mk-app-controls input[type='range']::-moz-range-track {
+  height: 8px;
+  background: rgba(148, 163, 184, 0.25);
+  border-radius: 999px;
+  box-shadow: inset 0 0 0 1px var(--mk-app-surface-border);
+}
+
+.mk-app-controls input[type='range']::-moz-range-thumb {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #ffffff;
+  border: 1px solid var(--mk-app-surface-border-strong);
+  box-shadow: 0 1px 2px rgba(2, 6, 23, 0.35);
+  transition:
+    transform 120ms ease,
+    box-shadow 160ms ease,
+    border-color 160ms ease;
+  cursor: pointer;
+}
+
+.mk-app-controls input[type='range']:hover::-moz-range-thumb {
+  box-shadow: 0 2px 4px rgba(2, 6, 23, 0.45);
+}
+
+.mk-app-controls input[type='range']:active::-moz-range-thumb {
+  transform: scale(0.98);
+}
+
+/* Utility classes for controls */
+.mk-button {
+  padding: 8px 14px;
+  border-radius: 10px;
+  border: 1px solid var(--mk-app-surface-border-strong);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.02));
+  color: var(--mk-app-fg);
+  cursor: pointer;
+  transition:
+    transform 120ms ease,
+    background-color 160ms ease,
+    box-shadow 160ms ease,
+    border-color 160ms ease;
+  box-shadow:
+    0 1px 0 var(--mk-app-surface-border),
+    0 6px 14px rgba(2, 6, 23, 0.3);
+}
+
+.mk-button:hover {
+  transform: translateY(-1px);
+  border-color: var(--mk-app-surface-border-strong);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.03));
+  box-shadow:
+    0 2px 0 var(--mk-app-surface-border),
+    0 10px 16px rgba(2, 6, 23, 0.35);
+}
+
+.mk-button:active {
+  transform: translateY(0);
+  box-shadow:
+    0 1px 0 var(--mk-app-surface-border),
+    inset 0 0 0 9999px rgba(255, 255, 255, 0.02);
+}
+
+.mk-button:focus-visible {
+  outline: 2px solid rgba(148, 163, 184, 0.35);
+  outline-offset: 2px;
+}
+
+.mk-check {
+  accent-color: #94a3b8;
+}
+
+.mk-card {
+  width: 100%;
+  height: 100%;
+  border-radius: 12px;
+  border: 1px solid var(--mk-app-surface-border-strong);
+  color: var(--mk-app-fg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  letter-spacing: 0.4px;
+  user-select: none;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.02));
+}
+
+/* Animations */
+@keyframes mk-pop-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes mk-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Responsive tweaks */
+@media (max-width: 640px) {
+  main {
+    padding: 14px;
+  }
+  .mk-app-grid {
+    padding: 12px;
+    border-radius: var(--radius-md);
+  }
+  .mk-app-controls {
+    gap: 10px;
+  }
+}

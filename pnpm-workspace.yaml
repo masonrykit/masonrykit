@@ -1,0 +1,11 @@
+# MasonryKit pnpm workspace configuration
+# See: https://pnpm.io/pnpm-workspace_yaml
+
+packages:
+  # Include all packages under the packages/ directory
+  - "packages/*"
+  - "apps/*"
+
+  # Exclude build outputs from being treated as workspaces
+  - "!**/dist/**"
+  - "!**/build/**"

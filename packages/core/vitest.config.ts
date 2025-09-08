@@ -1,0 +1,34 @@
+import { defineConfig } from 'vitest/config'
+
+/**
+ * Vitest config for @masonrykit/core
+ *
+ * - Runs unit tests in a Node environment (no DOM).
+ * - Allows passing with no tests so the workspace CI can succeed before tests exist.
+ */
+
+export default defineConfig({
+  test: {
+    include: ['tests/**/*.{test,spec}.ts', '__tests__/**/*.{test,spec}.ts'],
+    environment: 'node',
+    passWithNoTests: true,
+
+    clearMocks: true,
+    restoreMocks: true,
+    isolate: true,
+    reporters: ['default'],
+    coverage: {
+      provider: 'v8',
+      reporter: ['text', 'html', 'lcov'],
+      reportsDirectory: './coverage',
+      exclude: [
+        '**/dist/**',
+        '**/build/**',
+        '**/__tests__/**',
+        '**/tests/**',
+        '**/*.config.*',
+        '**/*.d.ts',
+      ],
+    },
+  },
+})

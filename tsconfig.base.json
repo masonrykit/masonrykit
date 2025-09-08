@@ -1,0 +1,41 @@
+{
+  "$schema": "https://json.schemastore.org/tsconfig",
+  "display": "MasonryKit Monorepo Base",
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "moduleDetection": "force",
+    "jsx": "react-jsx",
+
+    "composite": true,
+    "noEmit": true,
+    "declaration": true,
+    "declarationMap": true,
+
+    "strict": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+
+    "verbatimModuleSyntax": true,
+    "isolatedModules": true,
+    "useDefineForClassFields": true,
+    "importsNotUsedAsValues": "remove",
+    "noFallthroughCasesInSwitch": true,
+    "noImplicitOverride": true,
+    "noUncheckedIndexedAccess": true,
+    "exactOptionalPropertyTypes": true,
+
+    "esModuleInterop": true,
+    "resolveJsonModule": true,
+    "allowImportingTsExtensions": true,
+
+    "paths": {
+      "@masonrykit/browser": ["./packages/browser/src/index.ts", "./packages/browser/src"],
+      "@masonrykit/react": ["./packages/react/src/index.tsx", "./packages/react/src"]
+    }
+  },
+  "include": ["packages/*/src", "packages/*/test", "packages/*/tests", "packages/*/__tests__"],
+  "exclude": ["**/dist", "**/build", "node_modules"]
+}

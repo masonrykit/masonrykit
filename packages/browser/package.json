@@ -1,0 +1,61 @@
+{
+  "name": "@masonrykit/browser",
+  "version": "0.0.0",
+  "description": "Lightweight browser utilities for MasonryKit.",
+  "license": "MIT",
+  "private": false,
+  "type": "module",
+  "sideEffects": false,
+  "engines": {
+    "node": ">=18.18.0"
+  },
+  "source": "./src/index.ts",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs",
+      "default": "./dist/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist"
+  ],
+  "dependencies": {
+    "@masonrykit/core": "workspace:*"
+  },
+  "scripts": {
+    "build": "tsdown --platform browser",
+    "dev": "tsdown --watch --platform browser",
+    "test": "vitest run --config vitest.config.ts",
+    "test:watch": "vitest --config vitest.config.ts",
+    "lint": "eslint .",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "typecheck:test": "tsc -p tsconfig.test.json --noEmit",
+    "api:extract": "api-extractor run --local"
+  },
+  "keywords": [
+    "masonrykit",
+    "browser",
+    "utilities",
+    "tsdown",
+    "vitest",
+    "typescript"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/masonrykit/masonrykit.git",
+    "directory": "packages/browser"
+  },
+  "bugs": {
+    "url": "https://github.com/masonrykit/masonrykit/issues"
+  },
+  "homepage": "https://github.com/masonrykit/masonrykit#readme",
+  "publishConfig": {
+    "access": "public"
+  }
+}

@@ -1,0 +1,78 @@
+{
+  "name": "@masonrykit/react",
+  "version": "0.0.0",
+  "description": "React components and hooks for MasonryKit.",
+  "license": "MIT",
+  "private": false,
+  "type": "module",
+  "sideEffects": false,
+  "engines": {
+    "node": ">=18.18.0"
+  },
+  "source": "./src/index.tsx",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs",
+      "default": "./dist/index.js"
+    },
+    "./useMasonry": {
+      "types": "./dist/useMasonry.d.ts",
+      "import": "./dist/useMasonry.js",
+      "require": "./dist/useMasonry.cjs"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsdown --platform browser",
+    "dev": "tsdown --watch --platform browser",
+    "test": "vitest run --dir .",
+    "test:browser": "vitest --browser",
+    "test:browser:ui": "vitest --browser --ui",
+    "test:browser:headed": "vitest --browser --browser.headless=false",
+    "test:preview:ui": "vitest --browser --browser.provider=preview --ui",
+    "lint": "eslint .",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "api:extract": "api-extractor run --local"
+  },
+  "peerDependencies": {
+    "react": "^18.2.0 || ^19.0.0-0",
+    "react-dom": "^18.2.0 || ^19.0.0-0"
+  },
+  "dependencies": {
+    "@masonrykit/core": "workspace:*"
+  },
+  "devDependencies": {
+    "@vitest/ui": "3.2.4",
+    "vitest-browser-react": "1.0.1"
+  },
+  "keywords": [
+    "masonrykit",
+    "masonry",
+    "react",
+    "grid",
+    "waterfall",
+    "tsdown",
+    "vitest",
+    "typescript"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/masonrykit/masonrykit.git",
+    "directory": "packages/react"
+  },
+  "bugs": {
+    "url": "https://github.com/masonrykit/masonrykit/issues"
+  },
+  "homepage": "https://github.com/masonrykit/masonrykit#readme",
+  "publishConfig": {
+    "access": "public"
+  }
+}

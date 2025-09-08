@@ -1,0 +1,5 @@
+# Ignore build outputs for app workspaces
+dist/
+
+# Ignore dependencies
+node_modules/
