@@ -1,5 +1,15 @@
 # @masonrykit/react
 
+## 0.1.1
+
+### Patch Changes
+
+- [#4](https://github.com/masonrykit/masonrykit/pull/4) [`df19b72`](https://github.com/masonrykit/masonrykit/commit/df19b72aaa069086c606fcf65d915b0aac007540) Thanks [@lifeiscontent](https://github.com/lifeiscontent)! - Add npm version, bundle-size, and MIT license badges to each package README so consumers landing on npmjs.com can see the current version and size at a glance. Also fix a stale hardcoded pnpm version in the root README badge.
+
+- Updated dependencies [[`df19b72`](https://github.com/masonrykit/masonrykit/commit/df19b72aaa069086c606fcf65d915b0aac007540)]:
+  - @masonrykit/core@0.1.1
+  - @masonrykit/browser@0.1.1
+
 ## 0.1.0
 
 ### Minor Changes
