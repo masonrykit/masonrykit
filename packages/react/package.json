@@ -1,6 +1,6 @@
 {
   "name": "@masonrykit/react",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "description": "Headless React hooks for masonry layouts. Prop-getters, CSS custom properties, and complete control over elements and styling.",
   "license": "MIT",
   "private": false,
