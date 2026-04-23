@@ -1,6 +1,6 @@
 {
   "name": "@masonrykit/core",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Pure, framework-agnostic layout computation for masonry grids. Multi-span items, stamps, and deterministic positioning.",
   "license": "MIT",
   "private": false,
