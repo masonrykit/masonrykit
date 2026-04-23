@@ -1,6 +1,6 @@
 {
   "name": "@masonrykit/browser",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "description": "Framework-agnostic browser utilities for masonry layouts. Width observation, column stamps, and CSS helpers.",
   "license": "MIT",
   "private": false,
