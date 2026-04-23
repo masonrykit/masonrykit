@@ -1,5 +1,9 @@
 # @masonrykit/browser
 
+[![npm](https://img.shields.io/npm/v/@masonrykit/browser.svg)](https://www.npmjs.com/package/@masonrykit/browser)
+[![bundle size](https://img.shields.io/bundlejs/size/@masonrykit/browser)](https://bundlejs.com/?q=@masonrykit/browser)
+[![MIT License](https://img.shields.io/badge/license-MIT-blue.svg)](./LICENSE)
+
 DOM integrations on top of [`@masonrykit/core`](../core/). Framework-agnostic — use it directly for a vanilla masonry, or build your own framework binding. The React binding (`@masonrykit/react`) composes these primitives.
 
 ## Install

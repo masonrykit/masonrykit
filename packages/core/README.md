@@ -1,5 +1,9 @@
 # @masonrykit/core
 
+[![npm](https://img.shields.io/npm/v/@masonrykit/core.svg)](https://www.npmjs.com/package/@masonrykit/core)
+[![bundle size](https://img.shields.io/bundlejs/size/@masonrykit/core)](https://bundlejs.com/?q=@masonrykit/core)
+[![MIT License](https://img.shields.io/badge/license-MIT-blue.svg)](./LICENSE)
+
 Pure, framework-agnostic math for masonry-style grid layouts. Zero runtime dependencies, no DOM, no React — just input cells in, positions out.
 
 ## Install
