@@ -7,6 +7,14 @@ packages:
   - '!**/dist/**'
   - '!**/build/**'
 
+# pnpm-specific resolution defaults. Keeping these here (not in `.npmrc`)
+# avoids noisy "Unknown project config" warnings from npm 10/11 and is
+# future-proof against npm 12, which will reject unknown keys.
+resolutionMode: highest
+strictPeerDependencies: true
+autoInstallPeers: true
+saveWorkspaceProtocol: rolling
+
 # Single source of truth for every tooling dependency version. Workspace
 # packages reference these via `"pkg": "catalog:"` so bumps only need to
 # happen here.
