@@ -1,0 +1,9 @@
+# MasonryKit mise configuration
+
+[settings]
+# Use .tool-versions (asdf-style) for version resolution
+legacy_version_file = true
+
+[tools]
+# Ensure Node.js LTS 22 is available (exact patch pinned via .tool-versions)
+node = "22"

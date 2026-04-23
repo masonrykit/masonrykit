@@ -1,0 +1,27 @@
+{
+  "name": "@masonrykit/app-vite",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Playground app (vanilla TypeScript) for MasonryKit using Vite.",
+  "type": "module",
+  "license": "MIT",
+  "engines": {
+    "node": ">=20",
+    "pnpm": ">=10"
+  },
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview --open"
+  },
+  "dependencies": {
+    "@masonrykit/browser": "workspace:*"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "catalog:",
+    "@types/node": "catalog:",
+    "tailwindcss": "catalog:",
+    "typescript": "catalog:",
+    "vite": "catalog:"
+  }
+}

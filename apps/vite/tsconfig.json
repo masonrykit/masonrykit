@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json.schemastore.org/tsconfig",
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "composite": false,
+    "types": ["vite/client", "node"],
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    // Apps don't publish types; `isolatedDeclarations` would force explicit
+    // return types on configs like `vite.config.ts` for no benefit.
+    "isolatedDeclarations": false
+  },
+  "include": ["src", "vite.config.ts", "index.html"],
+  "exclude": ["node_modules", "dist", "build"]
+}

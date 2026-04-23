@@ -1,0 +1,29 @@
+# Lefthook pre-commit and pre-push hooks. Installed into `.git/hooks/` by
+# the `prepare` npm script (runs automatically on `pnpm install`).
+#
+# Keep hooks fast — anything that takes > 2s discourages contributors from
+# making small commits. oxlint + oxfmt finish in under a second for the
+# whole repo, so we don't bother with lint-staged.
+
+pre-commit:
+  parallel: true
+  commands:
+    format:
+      # Auto-format only staged files, then restage so the commit contains
+      # the formatted bytes.
+      glob: '*.{ts,tsx,js,jsx,mjs,cjs,json,md,html,css}'
+      run: pnpm exec oxfmt {staged_files}
+      stage_fixed: true
+    lint:
+      # Fast path: only lint changed files. oxlint handles this via its
+      # positional file args.
+      glob: '*.{ts,tsx,js,jsx,mjs,cjs}'
+      run: pnpm exec oxlint {staged_files}
+
+pre-push:
+  parallel: true
+  commands:
+    typecheck:
+      run: pnpm typecheck
+    unused:
+      run: pnpm lint:unused

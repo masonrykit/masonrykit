@@ -1,0 +1,76 @@
+{
+  // Editor behavior on save:
+  //   - oxfmt formats all supported languages
+  //   - oxlint's fixer applies auto-fixable lint rules
+  //   - VS Code reorganizes imports (dedupe / sort)
+  "editor.formatOnSave": true,
+  "editor.codeActionsOnSave": {
+    "source.fixAll.oxc": "explicit",
+    "source.organizeImports": "explicit"
+  },
+  "editor.tabSize": 2,
+  "editor.insertSpaces": true,
+  "editor.rulers": [100],
+  "files.eol": "\n",
+  "files.insertFinalNewline": true,
+  "files.trimFinalNewlines": true,
+  "files.trimTrailingWhitespace": true,
+
+  // oxc formatter/linter from the oxc-project VS Code extensions
+  "[typescript]": { "editor.defaultFormatter": "oxc.oxc-vscode" },
+  "[typescriptreact]": { "editor.defaultFormatter": "oxc.oxc-vscode" },
+  "[javascript]": { "editor.defaultFormatter": "oxc.oxc-vscode" },
+  "[javascriptreact]": { "editor.defaultFormatter": "oxc.oxc-vscode" },
+  "[json]": { "editor.defaultFormatter": "oxc.oxc-vscode" },
+  "[jsonc]": { "editor.defaultFormatter": "oxc.oxc-vscode" },
+  "[markdown]": {
+    "editor.defaultFormatter": "oxc.oxc-vscode",
+    "editor.wordWrap": "on"
+  },
+
+  "typescript.preferences.importModuleSpecifier": "relative",
+  "typescript.suggest.autoImports": true,
+  "typescript.updateImportsOnFileMove.enabled": "always",
+  "typescript.inlayHints.parameterNames.enabled": "all",
+  "typescript.inlayHints.parameterTypes.enabled": true,
+  "typescript.inlayHints.functionLikeReturnTypes.enabled": true,
+
+  "vitest.enable": true,
+  "vitest.commandLine": "pnpm exec vitest",
+
+  "files.exclude": {
+    "**/node_modules": true,
+    "**/dist": true,
+    "**/.tsdown": true,
+    "**/coverage": true,
+    "**/.vitest-attachments": true,
+    "**/__screenshots__": true
+  },
+  "search.exclude": {
+    "**/node_modules": true,
+    "**/dist": true,
+    "**/.tsdown": true,
+    "**/coverage": true,
+    "**/.vitest-attachments": true,
+    "**/__screenshots__": true,
+    "**/pnpm-lock.yaml": true
+  },
+
+  "explorer.fileNesting.enabled": true,
+  "explorer.fileNesting.patterns": {
+    "package.json": "pnpm-lock.yaml,pnpm-workspace.yaml,.npmrc,.nvmrc,.tool-versions,lefthook.yml,renovate.json,knip.json,.oxlintrc.json,.oxfmtrc*",
+    "tsconfig.json": "tsconfig.*.json",
+    "vitest.config.ts": "vitest.config.*.ts",
+    "*.ts": "${capture}.test.ts,${capture}.spec.ts,${capture}.bench.ts,${capture}.d.ts",
+    "*.tsx": "${capture}.test.tsx,${capture}.spec.tsx"
+  },
+
+  "npm.packageManager": "pnpm",
+
+  "terminal.integrated.defaultProfile.osx": "zsh",
+  "terminal.integrated.cwd": "${workspaceFolder}",
+
+  "git.ignoreLimitWarning": true,
+  "git.autofetch": true,
+  "problems.decorations.enabled": true
+}

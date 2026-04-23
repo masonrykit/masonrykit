@@ -1,0 +1,235 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+# Shared step blocks — if you adjust `version` or `node-version` anywhere,
+# remember this single source of truth.
+env:
+  NODE_VERSION: '22'
+
+jobs:
+  lint-and-typecheck:
+    name: Lint & Type Check
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+      # `pnpm/action-setup@v5` reads `packageManager` from package.json when
+      # `version` is omitted — we're on pnpm 10.33.1 via corepack.
+      - uses: pnpm/action-setup@v5
+        with:
+          run_install: false
+      - uses: actions/setup-node@v6
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm lint
+      - run: pnpm typecheck
+      - run: pnpm format:check
+      # Knip detects unused files, exports, deps, and binaries across the
+      # monorepo. A fresh failure is usually "you forgot to delete the
+      # old version of something" — fix or add to knip.json.
+      - run: pnpm lint:unused
+
+  test:
+    name: Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v6
+      - uses: pnpm/action-setup@v5
+        with:
+          run_install: false
+      - uses: actions/setup-node@v6
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Install Playwright browsers
+        run: pnpm test:install:browsers
+      # Root vitest.config.ts aggregates all three packages in one run via
+      # the Vitest 4 `projects` API.
+      - name: Run all tests (unit + browser + typecheck)
+        run: pnpm exec vitest run
+      - name: Upload test artifacts on failure
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: test-artifacts
+          path: |
+            packages/*/test-results/
+            packages/*/.vitest-attachments/
+          retention-days: 14
+
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+      - uses: pnpm/action-setup@v5
+        with:
+          run_install: false
+      - uses: actions/setup-node@v6
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      # Each tsdown config has `publint: true` and `attw: { profile: 'esm-only' }`,
+      # so building is itself a publish-readiness gate.
+      - name: Build packages + demos
+        run: pnpm build
+      - name: Enforce bundle-size budget
+        run: pnpm run analyze:bundle
+
+  smoke-test:
+    name: Pack + install smoke test
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: build
+    steps:
+      - uses: actions/checkout@v6
+      - uses: pnpm/action-setup@v5
+        with:
+          run_install: false
+      - uses: actions/setup-node@v6
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Build packages
+        run: pnpm -r --filter './packages/*' build
+      # `pnpm pack` each library, install it into a throwaway consumer, and
+      # verify imports resolve — catches broken exports / missing files that
+      # publint + attw may miss.
+      - name: Pack and smoke-test each package
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/consumer
+          cd /tmp/consumer
+          npm init -y > /dev/null
+          npm pkg set type=module
+
+          for pkg in core browser react; do
+            pkg_dir="$GITHUB_WORKSPACE/packages/$pkg"
+            # `pnpm pack` prints decorated output, not just a path — derive
+            # the deterministic filename ({name-no-scope}-{version}.tgz).
+            version=$(node -p "require('$pkg_dir/package.json').version")
+            (cd "$pkg_dir" && pnpm pack --pack-destination /tmp >/dev/null)
+            tarball="/tmp/masonrykit-$pkg-$version.tgz"
+            echo "Installing $tarball"
+            npm install "$tarball" --no-save --silent
+          done
+
+          cat <<'EOF' > check.mjs
+          import * as core from '@masonrykit/core'
+          import * as browser from '@masonrykit/browser'
+
+          const expectedCore = [
+            'computeLayout', 'computeColumns', 'columnStampsToPixels',
+            'heightCell', 'aspectCell', 'measuredCell',
+            'resolveBreakpoint', 'filterVisibleCells',
+          ]
+          for (const name of expectedCore) {
+            if (typeof core[name] !== 'function') {
+              throw new Error(`@masonrykit/core: missing export "${name}"`)
+            }
+          }
+
+          const expectedBrowser = [
+            'observeElementWidth', 'createMeasuredHeightTracker',
+            'startViewTransition', 'computeLayout',
+          ]
+          for (const name of expectedBrowser) {
+            if (typeof browser[name] !== 'function') {
+              throw new Error(`@masonrykit/browser: missing export "${name}"`)
+            }
+          }
+
+          // React has React peer deps we didn't install here, but we can still
+          // verify the module loads and exports existence via a dynamic import
+          // that doesn't execute hook body code.
+          const react = await import('@masonrykit/react')
+          for (const name of ['useMasonry', 'heightCell', 'aspectCell', 'measuredCell', 'startViewTransition']) {
+            if (typeof react[name] !== 'function') {
+              throw new Error(`@masonrykit/react: missing export "${name}"`)
+            }
+          }
+
+          console.log('✓ All packages import cleanly')
+          EOF
+
+          node check.mjs
+
+  test-compatibility:
+    name: Node ${{ matrix.node-version }} compatibility (core)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    strategy:
+      matrix:
+        node-version: ['20', '22', '24']
+    steps:
+      - uses: actions/checkout@v6
+      - uses: pnpm/action-setup@v5
+        with:
+          run_install: false
+      - uses: actions/setup-node@v6
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @masonrykit/core build
+      - run: pnpm --filter @masonrykit/core test
+
+  security-audit:
+    name: Security audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v6
+      - uses: pnpm/action-setup@v5
+        with:
+          run_install: false
+      - uses: actions/setup-node@v6
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm audit --prod --audit-level moderate
+
+  validate-changeset:
+    name: Validate changeset
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    if: github.event_name == 'pull_request'
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - name: Check for changeset
+        run: |
+          if [ "${{ github.actor }}" = "dependabot[bot]" ]; then
+            echo "Skipping changeset check for dependabot"
+            exit 0
+          fi
+          if git diff --name-only origin/main...HEAD | grep -E "^packages/.+/src/" > /dev/null; then
+            if [ -z "$(ls .changeset/*.md 2>/dev/null | grep -v README | head -1)" ]; then
+              echo "❌ Source files changed but no changeset found."
+              echo "Run: pnpm changeset"
+              exit 1
+            else
+              echo "✓ Changeset present"
+            fi
+          else
+            echo "ℹ No package source changes, changeset not required"
+          fi
