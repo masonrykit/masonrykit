@@ -1,0 +1,65 @@
+name: Release
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency: ${{ github.workflow }}-${{ github.ref }}
+
+jobs:
+  release:
+    name: Release
+    runs-on: ubuntu-latest
+
+    # `id-token: write` authorizes OIDC auth to npm (via Trusted Publishers)
+    # and signs packages with sigstore provenance. No NPM_TOKEN needed.
+    # `contents: write` + `pull-requests: write` let the Changesets action
+    # open the "Version Packages" PR and push tags.
+    permissions:
+      contents: write
+      pull-requests: write
+      id-token: write
+
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          # Full history so Changesets can diff + tag correctly.
+          fetch-depth: 0
+
+      # pnpm/action-setup@v5 reads `packageManager` from package.json.
+      - uses: pnpm/action-setup@v5
+        with:
+          run_install: false
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+          registry-url: https://registry.npmjs.org
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # Opens/updates a "Version Packages" PR when changesets exist.
+      # When that PR merges into main, runs the publish script which
+      # authenticates to npm via the repo's OIDC token. This requires
+      # each published package to have a Trusted Publisher configured on
+      # npmjs.com pointing at this repo + `release.yml`.
+      - name: Create release PR or publish to npm
+        id: changesets
+        # Pinned to a commit SHA for supply-chain hardening. Renovate bumps
+        # this automatically via `pinDigests` in renovate.json.
+        uses: changesets/action@6a0a831ff30acef54f2c6aa1cbbc1096b066edaf # v1.7.0
+        with:
+          version: pnpm run release:version
+          publish: pnpm run release:publish
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Signs published packages with npm's OIDC provenance attestation.
+          # Automatically true when OIDC + Trusted Publisher are set up.
+          NPM_CONFIG_PROVENANCE: 'true'
+
+      - name: Push git tags created during publish
+        if: steps.changesets.outputs.published == 'true'
+        run: git push --follow-tags

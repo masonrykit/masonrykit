@@ -1,0 +1,87 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "config:best-practices",
+    ":dependencyDashboard",
+    ":semanticCommits",
+    "schedule:weekends"
+  ],
+  "timezone": "America/Los_Angeles",
+  "labels": ["dependencies"],
+  "rangeStrategy": "bump",
+  "rebaseWhen": "behind-base-branch",
+
+  "lockFileMaintenance": {
+    "enabled": true,
+    "schedule": ["before 5am on monday"]
+  },
+
+  "packageRules": [
+    {
+      "description": "Automerge safe bumps (dev deps, types, lockfile, CI actions)",
+      "matchUpdateTypes": ["patch", "pin", "digest"],
+      "matchDepTypes": ["devDependencies"],
+      "automerge": true,
+      "platformAutomerge": true
+    },
+    {
+      "description": "Group all TypeScript-related updates into one PR",
+      "matchPackageNames": ["typescript", "tslib", "@types/**"],
+      "groupName": "typescript"
+    },
+    {
+      "description": "Group Vitest + Playwright ecosystem",
+      "matchPackageNames": ["vitest", "@vitest/**", "vitest-browser-react", "playwright", "jsdom"],
+      "groupName": "vitest + playwright"
+    },
+    {
+      "description": "Group Vite + plugin-react + Tailwind",
+      "matchPackageNames": ["vite", "@vitejs/**", "tailwindcss", "@tailwindcss/**"],
+      "groupName": "vite + tailwind"
+    },
+    {
+      "description": "Group React (runtime + types)",
+      "matchPackageNames": ["react", "react-dom", "@types/react", "@types/react-dom"],
+      "groupName": "react"
+    },
+    {
+      "description": "Group oxc toolchain (oxlint, oxlint-tsgolint, oxfmt)",
+      "matchPackageNames": ["oxlint", "oxlint-tsgolint", "oxfmt"],
+      "groupName": "oxc toolchain"
+    },
+    {
+      "description": "Group Changesets",
+      "matchPackageNames": ["@changesets/**"],
+      "groupName": "changesets"
+    },
+    {
+      "description": "Group publishing gates (publint + attw)",
+      "matchPackageNames": ["publint", "@arethetypeswrong/**"],
+      "groupName": "publish gates"
+    },
+    {
+      "description": "Group tsdown + rolldown ecosystem",
+      "matchPackageNames": ["tsdown", "rolldown", "@rolldown/**", "rollup", "@rollup/**"],
+      "groupName": "tsdown + rolldown"
+    },
+    {
+      "description": "Group GitHub Actions bumps into a single PR",
+      "matchManagers": ["github-actions"],
+      "groupName": "github actions",
+      "automerge": true,
+      "platformAutomerge": true
+    },
+    {
+      "description": "Pin GitHub Actions to SHAs for supply-chain hardening",
+      "matchManagers": ["github-actions"],
+      "pinDigests": true
+    }
+  ],
+
+  "vulnerabilityAlerts": {
+    "enabled": true,
+    "labels": ["security"]
+  },
+
+  "osvVulnerabilityAlerts": true
+}

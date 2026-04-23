@@ -1,0 +1,170 @@
+name: Bug Report
+description: File a bug report to help us improve MasonryKit
+title: '[Bug]: '
+labels: ['bug', 'triage']
+assignees: []
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to fill out this bug report! Please provide as much detail as possible to help us reproduce and fix the issue.
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Bug Description
+      description: A clear and concise description of what the bug is.
+      placeholder: 'When I do X, Y happens instead of Z...'
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Steps to Reproduce
+      description: Please provide step-by-step instructions to reproduce the issue.
+      placeholder: |
+        1. Create a grid with...
+        2. Add items with...
+        3. Set configuration to...
+        4. Observe that...
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected Behavior
+      description: What did you expect to happen?
+      placeholder: 'I expected the layout to...'
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual Behavior
+      description: What actually happened? Include any error messages if applicable.
+      placeholder: 'Instead, the layout...'
+    validations:
+      required: true
+
+  - type: dropdown
+    id: package
+    attributes:
+      label: Which package is affected?
+      multiple: true
+      options:
+        - '@masonrykit/core'
+        - '@masonrykit/browser'
+        - '@masonrykit/react'
+        - 'Not sure'
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: MasonryKit Version
+      description: Which version are you using?
+      placeholder: 'e.g., 0.1.0'
+    validations:
+      required: true
+
+  - type: dropdown
+    id: environment
+    attributes:
+      label: Environment
+      multiple: true
+      options:
+        - 'Browser (Chrome)'
+        - 'Browser (Firefox)'
+        - 'Browser (Safari)'
+        - 'Browser (Edge)'
+        - 'Node.js'
+        - 'React Native'
+        - 'Next.js'
+        - 'Vite'
+        - 'Webpack'
+        - 'Other'
+
+  - type: textarea
+    id: config
+    attributes:
+      label: Configuration
+      description: Share your MasonryKit configuration (remove sensitive data)
+      render: javascript
+      placeholder: |
+        {
+          gridWidth: 800,
+          columnWidth: 200,
+          gap: 12,
+          // ... other options
+        }
+
+  - type: textarea
+    id: code
+    attributes:
+      label: Minimal Reproduction Code
+      description: Please provide a minimal code example that demonstrates the issue
+      render: javascript
+      placeholder: |
+        import { useMasonry, heightCell } from '@masonrykit/react'
+
+        function MyComponent() {
+          const { stableCells, getGridProps, getCellProps } = useMasonry(
+            [heightCell('a', 100)],
+            { columnWidth: 200, gap: 12 },
+          )
+          return (
+            <div {...getGridProps()}>
+              {stableCells.map((cell) => (
+                <div key={cell.id} {...getCellProps(cell)} />
+              ))}
+            </div>
+          )
+        }
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Console Errors/Warnings
+      description: Any console errors or warnings related to this issue
+      render: text
+      placeholder: |
+        Error: Layout computation failed
+        TypeError: Cannot read property 'width' of undefined
+        Warning: ...
+
+  - type: textarea
+    id: screenshots
+    attributes:
+      label: Screenshots/Videos
+      description: If applicable, add screenshots or videos to help explain the problem
+
+  - type: textarea
+    id: workaround
+    attributes:
+      label: Workaround
+      description: Have you found any workarounds for this issue?
+
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: Checklist
+      options:
+        - label: I have searched existing issues to make sure this bug hasn't already been reported
+          required: true
+        - label: I have tested this with the latest version of MasonryKit
+          required: true
+        - label: I have provided a minimal reproduction of the issue
+          required: false
+        - label: I am willing to submit a pull request to fix this bug
+          required: false
+
+  - type: textarea
+    id: additional
+    attributes:
+      label: Additional Context
+      description: Add any other context about the problem here, such as related issues, potential causes, etc.

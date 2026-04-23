@@ -1,0 +1,79 @@
+{
+  "name": "@masonrykit/react",
+  "version": "0.0.0",
+  "description": "Headless React hooks for masonry layouts. Prop-getters, CSS custom properties, and complete control over elements and styling.",
+  "license": "MIT",
+  "private": false,
+  "type": "module",
+  "sideEffects": false,
+  "engines": {
+    "node": ">=20"
+  },
+  "files": [
+    "dist",
+    "LICENSE",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsdown",
+    "dev": "tsdown --watch",
+    "test": "vitest run --dir .",
+    "test:coverage": "vitest run --dir . --coverage",
+    "test:browser": "vitest --browser",
+    "test:browser:ui": "vitest --browser --ui",
+    "test:browser:headed": "vitest --browser --browser.headless=false",
+    "test:preview:ui": "vitest --browser --browser.provider=preview --ui",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "peerDependencies": {
+    "react": "^18.2.0 || ^19.0.0-0",
+    "react-dom": "^18.2.0 || ^19.0.0-0"
+  },
+  "dependencies": {
+    "@masonrykit/browser": "workspace:*",
+    "@masonrykit/core": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/react": "catalog:",
+    "@types/react-dom": "catalog:",
+    "@vitejs/plugin-react": "catalog:",
+    "@vitest/browser": "catalog:",
+    "@vitest/browser-playwright": "catalog:",
+    "@vitest/ui": "catalog:",
+    "react": "catalog:",
+    "react-dom": "catalog:",
+    "vitest-browser-react": "catalog:"
+  },
+  "keywords": [
+    "masonry",
+    "react",
+    "grid",
+    "layout",
+    "headless",
+    "component",
+    "hook",
+    "typescript",
+    "waterfall",
+    "pinterest"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/masonrykit/masonrykit.git",
+    "directory": "packages/react"
+  },
+  "bugs": {
+    "url": "https://github.com/masonrykit/masonrykit/issues"
+  },
+  "homepage": "https://github.com/masonrykit/masonrykit#readme",
+  "publishConfig": {
+    "access": "public",
+    "exports": {
+      ".": "./dist/index.js",
+      "./package.json": "./package.json"
+    }
+  },
+  "exports": {
+    ".": "./src/index.tsx",
+    "./package.json": "./package.json"
+  }
+}

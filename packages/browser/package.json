@@ -1,0 +1,64 @@
+{
+  "name": "@masonrykit/browser",
+  "version": "0.0.0",
+  "description": "Framework-agnostic browser utilities for masonry layouts. Width observation, column stamps, and CSS helpers.",
+  "license": "MIT",
+  "private": false,
+  "type": "module",
+  "sideEffects": false,
+  "engines": {
+    "node": ">=20"
+  },
+  "files": [
+    "dist",
+    "LICENSE",
+    "README.md"
+  ],
+  "dependencies": {
+    "@masonrykit/core": "workspace:*"
+  },
+  "devDependencies": {
+    "@vitest/browser": "catalog:",
+    "@vitest/browser-playwright": "catalog:"
+  },
+  "scripts": {
+    "build": "tsdown",
+    "dev": "tsdown --watch",
+    "test": "vitest run --config vitest.config.ts",
+    "test:coverage": "vitest run --config vitest.config.ts --coverage",
+    "test:watch": "vitest --config vitest.config.ts",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "typecheck:test": "tsc -p tsconfig.test.json --noEmit"
+  },
+  "keywords": [
+    "masonry",
+    "grid",
+    "layout",
+    "browser",
+    "resize-observer",
+    "responsive",
+    "typescript",
+    "framework-agnostic",
+    "stamps"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/masonrykit/masonrykit.git",
+    "directory": "packages/browser"
+  },
+  "bugs": {
+    "url": "https://github.com/masonrykit/masonrykit/issues"
+  },
+  "homepage": "https://github.com/masonrykit/masonrykit#readme",
+  "publishConfig": {
+    "access": "public",
+    "exports": {
+      ".": "./dist/index.js",
+      "./package.json": "./package.json"
+    }
+  },
+  "exports": {
+    ".": "./src/index.ts",
+    "./package.json": "./package.json"
+  }
+}

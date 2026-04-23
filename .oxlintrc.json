@@ -1,0 +1,122 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "plugins": ["typescript", "unicorn", "oxc", "import", "react", "react-hooks", "vitest"],
+  "settings": {
+    "react": { "version": "19.2.0" },
+    "vitest": { "typecheck": true }
+  },
+  "options": {
+    "typeAware": true,
+    "reportUnusedDisableDirectives": "error"
+  },
+  "categories": {
+    "correctness": "error",
+    "suspicious": "error",
+    "perf": "warn",
+    "pedantic": "warn"
+  },
+  "rules": {
+    "no-unused-vars": [
+      "error",
+      { "argsIgnorePattern": "^_", "varsIgnorePattern": "^_", "ignoreRestSiblings": true }
+    ],
+    "typescript/consistent-type-imports": [
+      "error",
+      { "prefer": "type-imports", "fixStyle": "inline-type-imports" }
+    ],
+    "typescript/no-import-type-side-effects": "error",
+    "typescript/no-duplicate-enum-values": "error",
+    "typescript/no-require-imports": "error",
+
+    "eqeqeq": ["error", "always", { "null": "ignore" }],
+
+    "react/react-in-jsx-scope": "off",
+
+    "typescript/prefer-readonly-parameter-types": "off",
+    "max-lines-per-function": "off",
+    "no-inline-comments": "off",
+    "no-negated-condition": "off",
+    "no-ternary": "off",
+    "capitalized-comments": "off"
+  },
+  "ignorePatterns": [
+    "**/node_modules/**",
+    "**/dist/**",
+    "**/build/**",
+    "**/coverage/**",
+    "**/.turbo/**",
+    "**/.next/**"
+  ],
+  "overrides": [
+    {
+      "files": ["packages/core/src/**/*.ts", "packages/react/src/**/*.tsx"],
+      "rules": {
+        "typescript/no-unsafe-type-assertion": "off",
+        "max-lines": "off"
+      }
+    },
+    {
+      "files": ["**/tsdown.config.ts"],
+      "rules": {
+        "typescript/no-unsafe-type-assertion": "off"
+      }
+    },
+    {
+      "files": ["apps/**/*.{ts,tsx}"],
+      "rules": {
+        "import/no-unassigned-import": "off",
+        "typescript/no-unsafe-type-assertion": "off",
+        "typescript/no-unsafe-call": "off",
+        "typescript/no-unsafe-member-access": "off",
+        "typescript/no-unsafe-assignment": "off",
+        "typescript/strict-void-return": "off",
+        "max-lines": "off"
+      }
+    },
+    {
+      "files": ["scripts/**/*.{ts,js}"],
+      "rules": {
+        "import/no-unassigned-import": "off",
+        "typescript/no-unsafe-type-assertion": "off",
+        "typescript/no-unsafe-call": "off",
+        "typescript/no-unsafe-member-access": "off",
+        "typescript/no-unsafe-assignment": "off",
+        "typescript/no-unsafe-return": "off",
+        "typescript/strict-boolean-expressions": "off",
+        "typescript/strict-void-return": "off",
+        "typescript/require-await": "off",
+        "require-await": "off",
+        "unicorn/prefer-top-level-await": "off",
+        "max-lines": "off"
+      }
+    },
+    {
+      "files": ["**/*.test.{ts,tsx}", "**/*.spec.{ts,tsx}", "**/__tests__/**/*.{ts,tsx}"],
+      "rules": {
+        "typescript/no-explicit-any": "off",
+        "typescript/no-unsafe-type-assertion": "off",
+        "typescript/no-unsafe-call": "off",
+        "typescript/no-unsafe-member-access": "off",
+        "typescript/no-unsafe-assignment": "off",
+        "typescript/no-unsafe-return": "off",
+        "typescript/no-confusing-void-expression": "off",
+        "typescript/strict-boolean-expressions": "off",
+        "typescript/strict-void-return": "off",
+        "typescript/require-await": "off",
+        "require-await": "off",
+        "no-inner-declarations": "off",
+        "max-lines": "off",
+        "max-classes-per-file": "off",
+        "vitest/no-conditional-in-test": "off"
+      }
+    },
+    {
+      "files": ["**/*.test-d.ts", "**/*.test-d.tsx"],
+      "rules": {
+        "vitest/expect-expect": "off",
+        "no-unused-expressions": "off",
+        "typescript/no-unused-expressions": "off"
+      }
+    }
+  ]
+}

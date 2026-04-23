@@ -1,0 +1,16 @@
+{
+  "$schema": "https://unpkg.com/knip@6/schema.json",
+  "workspaces": {
+    ".": {
+      "entry": [".changeset/*.md", "scripts/**/*.js"]
+    },
+    "packages/core": {
+      "entry": ["bench/**/*.bench.ts"]
+    },
+    "packages/react": {
+      "entry": ["__tests__/**/*.test-d.ts"]
+    }
+  },
+  "ignoreBinaries": ["mise"],
+  "ignoreDependencies": ["@vitest/browser"]
+}
