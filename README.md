@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/masonrykit/masonrykit/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/masonrykit/masonrykit/actions/workflows/ci.yml)
 [![MIT License](https://img.shields.io/badge/license-MIT-blue.svg)](./LICENSE)
-[![pnpm](https://img.shields.io/badge/pnpm-10.33.1-F69220.svg?logo=pnpm)](https://pnpm.io)
+[![pnpm](https://img.shields.io/badge/built_with-pnpm-F69220.svg?logo=pnpm)](https://pnpm.io)
 
 TypeScript-first monorepo providing framework-agnostic utilities and React components for Masonry-style grid layouts.
 

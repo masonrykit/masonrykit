@@ -1,5 +1,9 @@
 # @masonrykit/react
 
+[![npm](https://img.shields.io/npm/v/@masonrykit/react.svg)](https://www.npmjs.com/package/@masonrykit/react)
+[![bundle size](https://img.shields.io/bundlejs/size/@masonrykit/react)](https://bundlejs.com/?q=@masonrykit/react)
+[![MIT License](https://img.shields.io/badge/license-MIT-blue.svg)](./LICENSE)
+
 Headless React bindings for MasonryKit. The hook provides positioning via inline styles and CSS custom properties; you provide the elements, classes, styles, refs, event handlers, and ARIA.
 
 ## Install
