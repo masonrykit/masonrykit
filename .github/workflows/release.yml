@@ -32,9 +32,12 @@ jobs:
         with:
           run_install: false
 
+      # Node 24 LTS (Krypton) ships with npm 11.12+, which is required for
+      # OIDC-based trusted publishing. Node 22's npm 10.9 can sign Sigstore
+      # provenance but can't authenticate the PUT itself.
       - uses: actions/setup-node@v6
         with:
-          node-version: '22'
+          node-version: '24'
           registry-url: https://registry.npmjs.org
           cache: pnpm
 

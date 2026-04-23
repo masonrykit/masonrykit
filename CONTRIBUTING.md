@@ -4,7 +4,7 @@ Thanks for your interest! This guide covers the day-to-day of developing, testin
 
 ## Prerequisites
 
-- **Node.js** ≥ 20 (Node 22 LTS is the recommended / CI-pinned target)
+- **Node.js** ≥ 22 (Node 24 LTS is the recommended / CI-pinned target, pinned in `.nvmrc` and `.tool-versions`)
 - **pnpm** ≥ 10 (installed automatically via Corepack from `packageManager` in the root `package.json` — `corepack enable` once)
 - **Git** any modern version
 

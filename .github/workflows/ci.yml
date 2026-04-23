@@ -11,10 +11,11 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
-# Shared step blocks — if you adjust `version` or `node-version` anywhere,
-# remember this single source of truth.
+# Node 24 LTS (Krypton) ships with npm 11.12+, required for OIDC-based
+# trusted publishing in release.yml. Keep this single source of truth in
+# sync with `.nvmrc` / `.tool-versions`.
 env:
-  NODE_VERSION: '22'
+  NODE_VERSION: '24'
 
 jobs:
   lint-and-typecheck:
@@ -177,7 +178,9 @@ jobs:
     timeout-minutes: 10
     strategy:
       matrix:
-        node-version: ['20', '22', '24']
+        # Node 20 LTS ended maintenance in April 2026; engines pin us at
+        # >=22. Test the two active LTS lines on every PR.
+        node-version: ['22', '24']
     steps:
       - uses: actions/checkout@v6
       - uses: pnpm/action-setup@v5
