@@ -287,6 +287,78 @@ describe('issue #15 — measuredHeights stays empty under StrictMode remount', (
   })
 })
 
+describe('perf — ref cache prune on cells removal', () => {
+  it('cleanly re-measures a cell that was removed and re-added', async () => {
+    // The internal `refCacheRef` keeps a per-id ref callback. A prune
+    // effect drops entries for ids no longer in `cells`. This test
+    // verifies the side-effect we can see from outside: removing and
+    // re-adding the same cell id re-measures correctly (no stale
+    // cached ref confuses the observer lifecycle).
+    function Harness() {
+      const [ids, setIds] = useState<string[]>(['a'])
+      const cells = useMemo(() => ids.map((id) => measuredCell(id, { estimatedHeight: 20 })), [ids])
+      const { stableCells, gridRef, cellRef, measuredIds, layout } = useMasonry(cells, {
+        gridWidth: 100,
+        columnWidth: 100,
+        gap: 0,
+      })
+      return (
+        <>
+          <button
+            type="button"
+            data-testid="remove"
+            onClick={() => {
+              setIds([])
+            }}
+          />
+          <button
+            type="button"
+            data-testid="readd"
+            onClick={() => {
+              setIds(['a'])
+            }}
+          />
+          <div
+            ref={gridRef}
+            data-testid="grid"
+            data-height={layout.height}
+            style={{ position: 'relative', height: layout.height }}
+          >
+            {stableCells.map((cell) => (
+              <div
+                key={cell.id}
+                ref={cellRef(cell.id)}
+                data-id={cell.id}
+                style={{
+                  position: 'absolute',
+                  top: 0,
+                  left: 0,
+                  width: cell.width,
+                  height: measuredIds.has(cell.id) ? undefined : cell.height,
+                  transform: `translate(${cell.x}px, ${cell.y}px)`,
+                }}
+              >
+                <div style={{ height: 140, width: 100 }}>{cell.id}</div>
+              </div>
+            ))}
+          </div>
+        </>
+      )
+    }
+
+    const screen = await render(<Harness />)
+    const grid = () => $(screen.container, '[data-testid="grid"]')
+
+    await expect.poll(() => Number(grid().dataset.height), { timeout: 2000 }).toBe(140)
+
+    await screen.getByTestId('remove').click()
+    await expect.poll(() => Number(grid().dataset.height), { timeout: 1000 }).toBe(0)
+
+    await screen.getByTestId('readd').click()
+    await expect.poll(() => Number(grid().dataset.height), { timeout: 2000 }).toBe(140)
+  })
+})
+
 describe('issue #10 — gridRef element mounts after initial render', () => {
   it('attaches the width observer when the grid element arrives after mount', async () => {
     // Simulates a component that shows a loading state first and only mounts
