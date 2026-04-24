@@ -1,13 +1,20 @@
 /**
  * @masonrykit/react
  *
- * React bindings for MasonryKit. The hook provides positioning via inline
- * styles and CSS custom properties; users supply the elements, classes,
- * styles, refs, event handlers, and ARIA.
+ * React bindings for MasonryKit. The hook computes the layout and hands
+ * back two things:
+ *
+ *   1. `gridRef` + `cellRef(id)` — refs that wire the DOM observers
+ *      (grid auto-width measurement and per-cell `ResizeObserver` for
+ *      measured cells).
+ *   2. `layout`, `stableCells`, `visibleCells` — the raw layout data.
+ *
+ * Consumers pick the elements, styles, CSS var naming, positioning
+ * strategy, and animation coordination.
  *
  * Framework-agnostic pieces live in `@masonrykit/core` (pure math) and
- * `@masonrykit/browser` (DOM integrations). This module is just the
- * React wiring: state, effects, and prop-getters.
+ * `@masonrykit/browser` (DOM integrations). This module is the React
+ * wiring: state, effects, and stable refs.
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
@@ -57,11 +64,6 @@ export {
 } from '@masonrykit/core'
 export { startViewTransition, type MeasuredHeightTracker } from '@masonrykit/browser'
 
-/** CSS properties with support for custom property (`--*`) keys. */
-type CSSProperties = React.CSSProperties & {
-  [key: `--${string}`]: string | number | undefined
-}
-
 export type VirtualizeOptions = {
   /**
    * Pixels of cells to render outside the visible viewport on each side.
@@ -81,7 +83,7 @@ export type MasonryOptions = {
   columnWidth?: number
   /**
    * Explicit grid width. When omitted, the grid width is auto-measured via
-   * `ResizeObserver` on the element that `getGridProps().ref` attaches to.
+   * `ResizeObserver` on the element `gridRef` attaches to.
    */
   gridWidth?: number
   /**
@@ -100,16 +102,6 @@ export type MasonryOptions = {
   stamps?: readonly Stamp[]
   columnStamps?: readonly ColumnStamp[]
   /**
-   * When `true`, each cell wrapper is given a `view-transition-name` so the
-   * browser can animate adds, removes, and position changes natively when
-   * state updates are wrapped in `startViewTransition`. (React users should
-   * additionally `flushSync` inside the callback so the DOM commit lands
-   * before the browser's "after" snapshot is captured.)
-   *
-   * No-op in browsers without the View Transitions API.
-   */
-  animate?: boolean
-  /**
    * Render only cells that intersect the viewport (± overscan). Off by default.
    * Set to `true` for default overscan, or pass `{ overscan, scrollParent }`.
    *
@@ -118,51 +110,52 @@ export type MasonryOptions = {
   virtualize?: boolean | VirtualizeOptions
 }
 
-type AnyRef<T> = React.Ref<T> | undefined
-
-type ElementProps = React.HTMLAttributes<HTMLElement> & {
-  ref?: AnyRef<HTMLElement>
-}
-
-export type GridPropsOut<P extends ElementProps> = Omit<P, 'ref' | 'style'> & {
-  ref: React.RefCallback<HTMLElement>
-  style: CSSProperties
-}
-
-export type CellPropsOut<P extends ElementProps> = Omit<P, 'ref' | 'style'> & {
-  ref: React.RefCallback<HTMLElement>
-  style: CSSProperties
-}
-
 export type MasonryResult<M = undefined> = {
+  /** Full computed layout (cells in input order, width, height, columns). */
   layout: Layout<M>
-  /** All cells in stable render order (preserves DOM identity across shuffles). */
+  /**
+   * All cells in stable render order — preserves DOM identity across
+   * shuffles so the same React node renders for a given `id` before and
+   * after the input `cells` array is reordered.
+   */
   stableCells: readonly LayoutCell<M>[]
   /**
-   * Cells to render. Equals `stableCells` when `virtualize` is off; otherwise
-   * a subset intersecting the scroll viewport (± overscan). Measured cells
-   * that haven't reported a height yet are always included so their
-   * `ResizeObserver` can fire.
+   * Cells to render. Equals `stableCells` when `virtualize` is off;
+   * otherwise a subset intersecting the scroll viewport (± overscan).
+   * Measured cells that haven't reported a height yet are always included
+   * so their `ResizeObserver` can fire before the user scrolls to them.
    */
   visibleCells: readonly LayoutCell<M>[]
-  getGridProps: <P extends ElementProps = ElementProps>(userProps?: P) => GridPropsOut<P>
-  getCellProps: <P extends ElementProps = ElementProps>(
-    cell: LayoutCell<M>,
-    userProps?: P,
-  ) => CellPropsOut<P>
-}
-
-function composeRefs<T>(...refs: readonly AnyRef<T>[]): React.RefCallback<T> {
-  return (node) => {
-    for (const ref of refs) {
-      if (!ref) continue
-      if (typeof ref === 'function') ref(node)
-      else ref.current = node
-    }
-  }
+  /**
+   * Ref to attach to the grid element. Wires the auto-width
+   * `ResizeObserver` so the layout reflows when the container resizes.
+   * No-op when `gridWidth` is supplied. Stable across renders.
+   */
+  gridRef: React.RefCallback<HTMLElement>
+  /**
+   * Returns a ref for the cell with this `id`. For `measuredCell` inputs,
+   * attaches a `ResizeObserver` so the layout reflows when the content's
+   * intrinsic height changes. For `heightCell` / `aspectCell` inputs,
+   * returns a shared no-op — safe to spread on every cell unconditionally.
+   *
+   * Function identity is stable per id across renders, so React doesn't
+   * re-run attach/detach cycles.
+   */
+  cellRef: (id: string) => React.RefCallback<HTMLElement>
+  /**
+   * Ids of cells of type `'measured'` in the input. Useful for branching
+   * on "let content drive the height" vs "pin to `cell.height`" in the
+   * render, since `LayoutCell` itself doesn't carry the origin type.
+   */
+  measuredIds: ReadonlySet<string>
 }
 
 const NOOP_CLEANUP = (): void => {}
+
+// Shared no-op ref handed out by `cellRef(id)` for non-measured cells.
+// Module-level singleton keeps function identity stable across renders so
+// React doesn't re-run the attach/detach cycle.
+const NOOP_REF: React.RefCallback<HTMLElement> = () => {}
 
 export function useMasonry<M = undefined>(
   cells: readonly CoreCell<M>[],
@@ -177,14 +170,13 @@ export function useMasonry<M = undefined>(
     horizontalOrder = false,
     stamps,
     columnStamps,
-    animate = false,
     virtualize = false,
   } = options
 
   const gridElRef = useRef<HTMLElement | null>(null)
   const [measuredWidth, setMeasuredWidth] = useState(initialGridWidth)
 
-  const setGridEl = useCallback((el: HTMLElement | null) => {
+  const gridRef = useCallback((el: HTMLElement | null) => {
     gridElRef.current = el
   }, [])
 
@@ -300,6 +292,17 @@ export function useMasonry<M = undefined>(
     return refFn
   }, [])
 
+  // Public per-id ref factory. Returns the tracker-observe ref for measured
+  // cells, or a shared no-op for others — so consumers can spread
+  // `cellRef(cell.id)` unconditionally and pay zero cost for non-measured.
+  const cellRef = useCallback(
+    (id: string): React.RefCallback<HTMLElement> => {
+      if (measuredIds.has(id)) return getMeasureRef(id)
+      return NOOP_REF
+    },
+    [measuredIds, getMeasureRef],
+  )
+
   const stableOrderRef = useRef<string[]>([])
   const stableCells = useMemo<readonly LayoutCell<M>[]>(() => {
     // `useMemo` must be pure — read the previous order but don't mutate
@@ -392,68 +395,12 @@ export function useMasonry<M = undefined>(
     measuredHeights,
   ])
 
-  const getGridProps = useCallback(
-    <P extends ElementProps = ElementProps>(userProps?: P): GridPropsOut<P> => {
-      const { ref: userRef, style: userStyle, ...rest } = (userProps ?? {}) as ElementProps
-      const libraryStyle: CSSProperties = {
-        position: 'relative',
-        height: layout.height,
-        '--mk-grid-width': `${layout.width}px`,
-        '--mk-grid-height': `${layout.height}px`,
-        '--mk-grid-columns': `${layout.columns.count}`,
-      }
-      // Library wins on positioning / sizing keys it owns; user styles fill
-      // in anything else (colors, borders, shadows, etc.). Preventing user
-      // overrides of `position` / `height` keeps the layout contract intact.
-      return {
-        ...rest,
-        ref: composeRefs(setGridEl, userRef),
-        style: { ...userStyle, ...libraryStyle },
-      } as GridPropsOut<P>
-    },
-    [layout, setGridEl],
-  )
-
-  const getCellProps = useCallback(
-    <P extends ElementProps = ElementProps>(
-      cell: LayoutCell<M>,
-      userProps?: P,
-    ): CellPropsOut<P> => {
-      const { ref: userRef, style: userStyle, ...rest } = (userProps ?? {}) as ElementProps
-      const isMeasured = measuredIds.has(cell.id)
-      const libraryStyle: CSSProperties = {
-        position: 'absolute',
-        top: 0,
-        left: 0,
-        width: cell.width,
-        translate: `${cell.x}px ${cell.y}px`,
-        '--mk-cell-x': `${cell.x}px`,
-        '--mk-cell-y': `${cell.y}px`,
-        '--mk-cell-width': `${cell.width}px`,
-        '--mk-cell-height': `${cell.height}px`,
-        '--mk-cell-column': `${cell.column}`,
-      }
-      if (!isMeasured) {
-        // Measured cells let their content drive the box so the RO reports
-        // real content height, not a stale placeholder from the previous pass.
-        libraryStyle.height = cell.height
-      }
-      if (animate) {
-        libraryStyle.viewTransitionName = `mk-${cell.id}`
-      }
-      const refs: AnyRef<HTMLElement>[] = [userRef]
-      if (isMeasured) refs.push(getMeasureRef(cell.id))
-      // Library wins on positioning keys (position, top, left, width,
-      // translate, height, view-transition-name, --mk-cell-*); user styles
-      // fill in everything else (transition, background, border, etc.).
-      return {
-        ...rest,
-        ref: composeRefs(...refs),
-        style: { ...userStyle, ...libraryStyle },
-      } as CellPropsOut<P>
-    },
-    [animate, measuredIds, getMeasureRef],
-  )
-
-  return { layout, stableCells, visibleCells, getGridProps, getCellProps }
+  return {
+    layout,
+    stableCells,
+    visibleCells,
+    gridRef,
+    cellRef,
+    measuredIds,
+  }
 }

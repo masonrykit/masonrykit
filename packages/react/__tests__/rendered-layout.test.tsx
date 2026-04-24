@@ -1,9 +1,14 @@
 /**
  * Real-browser geometry tests. Renders a headless grid and asserts that
- * getBoundingClientRect() of each cell matches the computed layout.
+ * `getBoundingClientRect()` of each cell matches the computed layout.
+ *
+ * The `<Grid>` fixture mirrors the shape the hook documents: `gridRef`
+ * + `cellRef(id)` + inline styles on every cell. No stylesheet, no CSS
+ * vars — just the same code a consumer would write to put real pixels on
+ * screen.
  */
 import { describe, it, expect, assert } from 'vitest'
-import { Component, type ReactNode } from 'react'
+import { Component, type CSSProperties, type ReactNode } from 'react'
 import { render } from 'vitest-browser-react'
 import {
   aspectCell,
@@ -38,6 +43,21 @@ function $(root: ParentNode, selector: string): HTMLElement {
   return el
 }
 
+/** Build a per-cell inline style from the raw layout data — exactly what the
+ *  README example shows consumers doing. Height is omitted for measured
+ *  cells so content drives the box. Generic so it accepts `LayoutCell<M>`
+ *  for any `M`. */
+function cellStyle<M>(cell: LayoutCell<M>, isMeasured = false): CSSProperties {
+  return {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    width: cell.width,
+    ...(isMeasured ? {} : { height: cell.height }),
+    transform: `translate(${cell.x}px, ${cell.y}px)`,
+  }
+}
+
 function Grid<M = unknown>({
   cells,
   gridWidth = 300,
@@ -55,7 +75,7 @@ function Grid<M = unknown>({
   stamps?: readonly Stamp[]
   columnStamps?: readonly ColumnStamp[]
 }): React.ReactElement {
-  const { stableCells, getGridProps, getCellProps } = useMasonry<M>(cells, {
+  const { stableCells, gridRef, cellRef, layout } = useMasonry<M>(cells, {
     gridWidth,
     columnWidth,
     gap,
@@ -64,9 +84,9 @@ function Grid<M = unknown>({
     ...(columnStamps ? { columnStamps } : {}),
   })
   return (
-    <div {...getGridProps({ className: 'grid' })}>
+    <div ref={gridRef} className="grid" style={{ position: 'relative', height: layout.height }}>
       {stableCells.map((cell) => (
-        <div key={cell.id} {...getCellProps(cell)} data-id={cell.id} />
+        <div key={cell.id} ref={cellRef(cell.id)} data-id={cell.id} style={cellStyle(cell)} />
       ))}
     </div>
   )
@@ -181,17 +201,19 @@ describe('rendered geometry', () => {
     const cells: Cell[] = [heightCell('a', 50), heightCell('b', 50), heightCell('c', 50)]
 
     function Test({ width }: { width: number }) {
-      const { stableCells, getGridProps, getCellProps, layout } = useMasonry(cells, {
+      const { stableCells, gridRef, cellRef, layout } = useMasonry(cells, {
         columnWidth: 100,
         gap: 0,
       })
       return (
         <div
-          {...getGridProps({ className: 'grid', style: { width: `${width}px` } })}
+          ref={gridRef}
+          className="grid"
           data-cols={layout.columns.count}
+          style={{ position: 'relative', width, height: layout.height }}
         >
           {stableCells.map((cell) => (
-            <div key={cell.id} {...getCellProps(cell)} data-id={cell.id} />
+            <div key={cell.id} ref={cellRef(cell.id)} data-id={cell.id} style={cellStyle(cell)} />
           ))}
         </div>
       )

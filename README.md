@@ -17,12 +17,12 @@ TypeScript-first monorepo providing framework-agnostic utilities and React compo
 ## Features
 
 - **Framework-agnostic core** — pure algorithm, zero dependencies, works anywhere JavaScript runs
-- **Headless React bindings** — prop-getters (downshift/react-aria style); you own every element
+- **Truly headless** — the library hands back refs + raw layout data (`cell.x`, `cell.y`, `cell.width`, …); you write the elements, classes, styles, and positioning strategy (absolute + translate, CSS Grid, transforms, whatever fits)
 - **Three cell types** — fixed `heightCell`, `aspectCell` (width/height ratio), and `measuredCell` (height discovered via `ResizeObserver`)
 - **Multi-span + stamps** — cells can span multiple columns; reserve rectangular regions that cells flow around
 - **Responsive breakpoints** — `columnWidth` / `gap` switch at configurable `minWidth` thresholds
 - **Virtualization** — opt-in viewport filtering for large lists
-- **Animation** — opt-in View Transitions API integration
+- **View Transitions** — safe `startViewTransition` wrapper for animated shuffles / adds / removes
 - **SSR-ready** — `initialGridWidth` lets server and first client render produce identical markup
 - **Strongly typed** — generic `meta` flows end-to-end with no casts (`cell.meta.src`, not `cell.meta!.src`)
 
@@ -53,7 +53,7 @@ Each package builds on the previous layer — use exactly what you need.
 
 ## Development
 
-Prerequisites: Node.js ≥ 20, pnpm ≥ 10 (installed via Corepack from `packageManager` in the root `package.json`).
+Prerequisites: Node.js ≥ 22, pnpm ≥ 10 (installed via Corepack from `packageManager` in the root `package.json`).
 
 ```bash
 pnpm install    # Install dependencies
@@ -82,7 +82,7 @@ Each package has detailed documentation:
 
 - **[@masonrykit/core](./packages/core/README.md)** — Layout algorithms, types, and examples
 - **[@masonrykit/browser](./packages/browser/README.md)** — Browser utilities and integration guides
-- **[@masonrykit/react](./packages/react/README.md)** — React components, hooks, and styling approaches
+- **[@masonrykit/react](./packages/react/README.md)** — `useMasonry` hook and styling approaches
 
 ## Monorepo Structure
 
@@ -124,7 +124,7 @@ Modern evergreen browsers. Key APIs in use:
 
 - CSS `translate` property (Chrome 104+, Safari 14.1+, Firefox 72+)
 - `ResizeObserver` (ubiquitous ≥ 2020)
-- View Transitions API — only required when `animate: true` is set; no-op fallback otherwise
+- View Transitions API — only when `startViewTransition` is in use; no-op fallback otherwise
 
 ## License
 

@@ -25,14 +25,14 @@ describe('@masonrykit/react', () => {
   it('auto-measures width when gridWidth is not provided', async () => {
     function Test() {
       const cells: Cell[] = [heightCell('a', 100)]
-      const { layout, getGridProps, getCellProps, stableCells } = useMasonry(cells, {
+      const { layout, gridRef, cellRef, stableCells } = useMasonry(cells, {
         gap: 10,
         columnWidth: 180,
       })
       return (
-        <div {...getGridProps({ style: { width: '400px' } })} data-width={layout.width}>
+        <div ref={gridRef} style={{ width: '400px' }} data-width={layout.width}>
           {stableCells.map((c) => (
-            <span key={c.id} {...getCellProps(c)}>
+            <span key={c.id} ref={cellRef(c.id)}>
               {c.id}
             </span>
           ))}

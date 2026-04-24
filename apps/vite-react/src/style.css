@@ -1,144 +1,105 @@
 @import 'tailwindcss';
 
-/* ---------- Custom form controls ----------------------------------------- */
-
-.mk-range {
-  appearance: none;
-  width: 100%;
-  height: 4px;
-  background: rgb(255 255 255 / 0.08);
-  border-radius: 999px;
-  cursor: pointer;
-  outline: none;
+/* Custom easing token consumed via Tailwind's `ease-smooth` utility. */
+@theme {
+  --ease-smooth: cubic-bezier(0.22, 1, 0.36, 1);
 }
 
-.mk-range:disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
-}
+/*
+ * Form-control classes are written as Tailwind 4 `@utility` definitions:
+ * they auto-participate in the variant system (hover, focus, etc.) and let
+ * us `@apply` design tokens inside, so colors and sizes stay in sync with
+ * the theme. Pseudo-element targeting (`::-webkit-slider-thumb`, `::before`)
+ * can't be done as pure utilities, so we declare the recipe here once and
+ * reference it by className from the components.
+ */
 
-.mk-range::-webkit-slider-thumb {
-  appearance: none;
-  width: 16px;
-  height: 16px;
-  border-radius: 50%;
-  background: rgb(244 244 245);
-  border: 2px solid rgb(24 24 27);
-  cursor: pointer;
-  transition: transform 150ms ease;
-}
+/* ---------- Range slider -------------------------------------------------- */
 
-.mk-range::-webkit-slider-thumb:hover {
-  transform: scale(1.15);
-}
+@utility mk-range {
+  @apply appearance-none w-full h-1 bg-white/8 rounded-full cursor-pointer outline-none;
 
-.mk-range::-moz-range-thumb {
-  width: 16px;
-  height: 16px;
-  border-radius: 50%;
-  background: rgb(244 244 245);
-  border: 2px solid rgb(24 24 27);
-  cursor: pointer;
-}
+  &:disabled {
+    @apply opacity-40 cursor-not-allowed;
+  }
 
-/* Cross-browser keyboard-focus ring. `outline` targets the track (Firefox
- * doesn't style the thumb on focus), and the thumb box-shadow gives Webkit
- * + Firefox-thumb a matching accent. */
-.mk-range:focus-visible {
-  outline: 2px solid rgb(16 185 129 / 0.6);
-  outline-offset: 4px;
-}
+  &::-webkit-slider-thumb {
+    @apply appearance-none size-4 rounded-full bg-zinc-100 border-2 border-zinc-900 cursor-pointer;
+    transition: transform 150ms ease;
+  }
 
-.mk-range:focus-visible::-webkit-slider-thumb {
-  box-shadow: 0 0 0 3px rgb(16 185 129 / 0.4);
-}
+  &::-webkit-slider-thumb:hover {
+    @apply scale-[1.15];
+  }
 
-.mk-range:focus-visible::-moz-range-thumb {
-  box-shadow: 0 0 0 3px rgb(16 185 129 / 0.4);
+  &::-moz-range-thumb {
+    @apply size-4 rounded-full bg-zinc-100 border-2 border-zinc-900 cursor-pointer;
+  }
+
+  /* Cross-browser keyboard-focus ring. `outline` targets the track (Firefox
+   * doesn't style the thumb on focus), `ring` on the thumb gives Webkit +
+   * Firefox-thumb a matching accent. */
+  &:focus-visible {
+    @apply outline-2 outline-emerald-500/60 outline-offset-4;
+  }
+
+  &:focus-visible::-webkit-slider-thumb {
+    @apply ring-[3px] ring-emerald-500/40;
+  }
+
+  &:focus-visible::-moz-range-thumb {
+    @apply ring-[3px] ring-emerald-500/40;
+  }
 }
 
 /* ---------- Toggle switch ------------------------------------------------- */
 
-.mk-switch {
-  appearance: none;
-  position: relative;
-  width: 32px;
-  height: 18px;
-  background: rgb(255 255 255 / 0.08);
-  border: 1px solid rgb(255 255 255 / 0.1);
-  border-radius: 999px;
-  cursor: pointer;
+@utility mk-switch {
+  @apply appearance-none relative w-8 h-[18px] bg-white/8 border border-white/10 rounded-full cursor-pointer flex-none;
   transition:
     background 180ms ease,
     border-color 180ms ease;
-  flex: none;
-}
 
-.mk-switch::before {
-  content: '';
-  position: absolute;
-  top: 1px;
-  left: 1px;
-  width: 14px;
-  height: 14px;
-  background: rgb(244 244 245);
-  border-radius: 50%;
-  transition: translate 180ms ease;
-}
+  &::before {
+    content: '';
+    @apply absolute top-[1px] left-[1px] size-3.5 bg-zinc-100 rounded-full;
+    transition: translate 180ms ease;
+  }
 
-.mk-switch:checked {
-  background: rgb(16 185 129 / 0.8);
-  border-color: rgb(16 185 129);
-}
+  &:checked {
+    @apply bg-emerald-500/80 border-emerald-500;
+  }
 
-.mk-switch:checked::before {
-  translate: 14px 0;
-}
+  &:checked::before {
+    translate: 14px 0;
+  }
 
-.mk-switch:focus-visible {
-  outline: 2px solid rgb(16 185 129 / 0.6);
-  outline-offset: 2px;
+  &:focus-visible {
+    @apply outline-2 outline-emerald-500/60 outline-offset-2;
+  }
 }
 
 /* ---------- Select -------------------------------------------------------- */
 
-.mk-select {
-  appearance: none;
-  background: rgb(255 255 255 / 0.04);
-  border: 1px solid rgb(255 255 255 / 0.08);
-  color: rgb(244 244 245);
-  padding: 6px 28px 6px 10px;
-  border-radius: 6px;
-  font-size: 13px;
-  cursor: pointer;
+@utility mk-select {
+  @apply appearance-none bg-white/4 border border-white/8 text-zinc-100 py-1.5 pr-7 pl-2.5 rounded-md text-[13px] cursor-pointer bg-no-repeat;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath fill='none' stroke='%23a1a1aa' stroke-width='1.5' d='M1 1l4 4 4-4'/%3E%3C/svg%3E");
-  background-repeat: no-repeat;
   background-position: right 10px center;
   transition:
     border-color 150ms ease,
     background 150ms ease;
-}
 
-.mk-select:hover:not(:disabled) {
-  border-color: rgb(255 255 255 / 0.15);
-}
+  &:hover:not(:disabled) {
+    @apply border-white/15;
+  }
 
-.mk-select:disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
-}
+  &:disabled {
+    @apply opacity-40 cursor-not-allowed;
+  }
 
-.mk-select:focus-visible {
-  outline: 2px solid rgb(16 185 129 / 0.6);
-  outline-offset: 1px;
-  border-color: transparent;
-}
-
-/* ---------- Focus rings for buttons -------------------------------------- */
-
-.mk-btn:focus-visible {
-  outline: 2px solid rgb(16 185 129 / 0.6);
-  outline-offset: 2px;
+  &:focus-visible {
+    @apply outline-2 outline-emerald-500/60 outline-offset-1 border-transparent;
+  }
 }
 
 /* ---------- View transition stacking ------------------------------------- */
@@ -146,10 +107,10 @@
  * By default, every element with a `view-transition-name` is painted above
  * the `::view-transition-group(root)` layer. That means animating cells
  * would visibly cross over the sticky sidebar and status bar during a
- * transition. Promote the chrome into their own VT groups and push them
- * above the cells.
+ * transition. Push their groups above the cells. Targeting VT
+ * pseudo-elements like `::view-transition-group(name)` can't be done with
+ * Tailwind utilities, so it lives here.
  */
-
 ::view-transition-group(mk-sidebar),
 ::view-transition-group(mk-statusbar) {
   z-index: 100;

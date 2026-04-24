@@ -15,6 +15,12 @@ import {
 
 import './style.css'
 
+// Feature detect View Transitions once at module load. Used below to gate
+// `data-animate` so browsers without VT fall back to CSS transitions instead
+// of "no motion at all" (suppressing CSS while VT silently no-ops).
+const VT_SUPPORTED =
+  typeof document !== 'undefined' && typeof document.startViewTransition === 'function'
+
 interface PhotoMeta {
   title: string
   src: string
@@ -93,7 +99,7 @@ function generateCells(count: number, startIndex = 0, useMeasured = false): Demo
   return out
 }
 
-/* ---------- Primitives ---------------------------------------------------- */
+/* ---------- UI atoms ------------------------------------------------------ */
 
 function SectionLabel({ children }: { children: ReactNode }) {
   return (
@@ -160,7 +166,7 @@ function Button({
   variant?: 'primary' | 'ghost'
 }) {
   const base =
-    'mk-btn inline-flex items-center justify-center px-3 py-2 rounded-md text-sm font-medium transition-colors'
+    'inline-flex items-center justify-center px-3 py-2 rounded-md text-sm font-medium transition-colors focus-visible:outline-2 focus-visible:outline-emerald-500/60 focus-visible:outline-offset-2'
   const styles =
     variant === 'primary'
       ? 'bg-zinc-100 text-zinc-950 hover:bg-white'
@@ -330,19 +336,15 @@ function App() {
     })
   }
 
-  const { stableCells, visibleCells, getGridProps, getCellProps, layout } = useMasonry<PhotoMeta>(
-    cells,
-    {
-      ...(useBreakpoints ? { breakpoints: BREAKPOINTS } : { gap, columnWidth }),
-      horizontalOrder,
-      ...(stamps ? { stamps } : {}),
-      animate,
-      ...(virtualize ? { virtualize: { overscan: 400 } } : {}),
-      // `initialGridWidth` seeds the first-render layout so SSR + client
-      // hydration produce identical output.
-      initialGridWidth: 1200,
-    },
-  )
+  const { stableCells, visibleCells, gridRef, cellRef, layout } = useMasonry<PhotoMeta>(cells, {
+    ...(useBreakpoints ? { breakpoints: BREAKPOINTS } : { gap, columnWidth }),
+    horizontalOrder,
+    ...(stamps ? { stamps } : {}),
+    ...(virtualize ? { virtualize: { overscan: 400 } } : {}),
+    // `initialGridWidth` seeds the first-render layout so SSR + client
+    // hydration produce identical output.
+    initialGridWidth: 1200,
+  })
 
   const renderCells = virtualize ? visibleCells : stableCells
   const activeFeatures = [
@@ -364,10 +366,7 @@ function App() {
 
       <div className="grid lg:grid-cols-[320px_1fr] min-h-screen">
         {/* Sidebar */}
-        <aside
-          className="border-b lg:border-b-0 lg:border-r border-white/6 bg-zinc-950/80 backdrop-blur-xl lg:sticky lg:top-0 lg:h-screen lg:overflow-y-auto"
-          style={{ viewTransitionName: 'mk-sidebar' }}
-        >
+        <aside className="border-b lg:border-b-0 lg:border-r border-white/6 bg-zinc-950/80 backdrop-blur-xl lg:sticky lg:top-0 lg:h-screen lg:overflow-y-auto [view-transition-name:mk-sidebar]">
           <div className="p-5 border-b border-white/6">
             <div className="flex items-baseline gap-2">
               <h1 className="text-lg font-semibold tracking-tight">MasonryKit</h1>
@@ -512,10 +511,7 @@ function App() {
         {/* Main area */}
         <main className="min-w-0">
           {/* Status strip */}
-          <div
-            className="sticky top-0 z-10 flex items-center gap-2 px-6 py-3 border-b border-white/6 bg-zinc-950/80 backdrop-blur-xl"
-            style={{ viewTransitionName: 'mk-statusbar' }}
-          >
+          <div className="sticky top-0 z-10 flex items-center gap-2 px-6 py-3 border-b border-white/6 bg-zinc-950/80 backdrop-blur-xl [view-transition-name:mk-statusbar]">
             <StatusPill label="Cols" value={String(layout.columns.count)} />
             <StatusPill
               label={virtualize ? 'Rendered' : 'Cells'}
@@ -544,28 +540,55 @@ function App() {
             </div>
           </div>
 
-          {/* Grid */}
+          {/* Grid — layout values flow through inline CSS custom properties;
+               Tailwind's `translate-x-(--x)` / `w-(--w)` shorthand consumes
+               them in the stable className. Only the var values churn per
+               render, so style resolution stays on the compositor lane. */}
           <div className="p-6">
-            <div {...getGridProps()}>
-              {renderCells.map((cell) => (
-                <div
-                  key={cell.id}
-                  {...getCellProps(cell, {
-                    style: animate
-                      ? undefined
-                      : {
-                          transition:
-                            'translate 320ms cubic-bezier(0.22, 1, 0.36, 1), width 320ms cubic-bezier(0.22, 1, 0.36, 1), height 320ms cubic-bezier(0.22, 1, 0.36, 1)',
-                        },
-                  })}
-                >
-                  {cell.meta.text !== undefined ? (
-                    <MeasuredCard cell={cell} />
-                  ) : (
-                    <PhotoCard cell={cell} showPhotos={showPhotos} />
-                  )}
-                </div>
-              ))}
+            <div
+              ref={gridRef}
+              // `data-animate` flips every descendant cell's CSS transition
+              // off via `group-data-[animate=true]:transition-none` so View
+              // Transitions own the motion. Gated on VT support — without
+              // it, CSS transitions are the fallback, so leave them on.
+              className="relative group h-(--mk-grid-h)"
+              data-animate={animate && VT_SUPPORTED ? 'true' : undefined}
+              style={
+                {
+                  '--mk-grid-h': `${layout.height}px`,
+                } as React.CSSProperties
+              }
+            >
+              {renderCells.map((cell) => {
+                const isMeasured = cell.meta.text !== undefined
+                return (
+                  <div
+                    key={cell.id}
+                    ref={cellRef(cell.id)}
+                    className="absolute top-0 left-0 w-(--mk-cell-w) h-(--mk-cell-h) translate-x-(--mk-cell-x) translate-y-(--mk-cell-y) [view-transition-name:var(--mk-cell-vt-name)] transition-all duration-300 ease-smooth group-data-[animate=true]:transition-none"
+                    style={
+                      {
+                        '--mk-cell-x': `${cell.x}px`,
+                        '--mk-cell-y': `${cell.y}px`,
+                        '--mk-cell-w': `${cell.width}px`,
+                        // `null` tells React to omit the property. Unset vars
+                        // let the consuming utilities fall back to their
+                        // property's initial value: `height: auto` for
+                        // measured cells, `view-transition-name: none` when
+                        // not animating.
+                        '--mk-cell-h': isMeasured ? null : `${cell.height}px`,
+                        '--mk-cell-vt-name': animate ? `mk-${cell.id}` : null,
+                      } as React.CSSProperties
+                    }
+                  >
+                    {isMeasured ? (
+                      <MeasuredCard cell={cell} />
+                    ) : (
+                      <PhotoCard cell={cell} showPhotos={showPhotos} />
+                    )}
+                  </div>
+                )
+              })}
             </div>
           </div>
         </main>

@@ -99,22 +99,11 @@ test('useMasonry accepts all three cell types in one array', () => {
   expectTypeOf(result.visibleCells).toEqualTypeOf<readonly LayoutCell<Photo>[]>()
 })
 
-test('getGridProps preserves caller prop types and adds ref + style', () => {
-  const { getGridProps } = useMasonry([heightCell('a', 100)], { gridWidth: 200 })
-
-  const out = getGridProps({
-    className: 'grid',
-    'aria-label': 'Photos',
-    onClick: () => {},
-  })
-
-  // User props preserved
-  expectTypeOf(out.className).toEqualTypeOf<string>()
-  expectTypeOf(out['aria-label']).toEqualTypeOf<string>()
-  expectTypeOf(out.onClick).toBeFunction()
-  // Library props added
-  expectTypeOf(out.ref).toEqualTypeOf<React.RefCallback<HTMLElement>>()
-  expectTypeOf(out.style).toBeObject()
+test('gridRef and cellRef are typed as ref callbacks', () => {
+  const { gridRef, cellRef } = useMasonry([heightCell('a', 100)], { gridWidth: 200 })
+  expectTypeOf(gridRef).toEqualTypeOf<React.RefCallback<HTMLElement>>()
+  expectTypeOf(cellRef).toBeFunction()
+  expectTypeOf(cellRef('a')).toEqualTypeOf<React.RefCallback<HTMLElement>>()
 })
 
 test('Cell<M> is a discriminated union keyed by `type`', () => {

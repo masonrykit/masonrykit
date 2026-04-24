@@ -1,9 +1,9 @@
 /**
- * Tests for the React bindings' opt-in features:
+ * Tests for the hook's opt-in options:
  *   - initialGridWidth (SSR hydration-safe initial width)
  *   - breakpoints (responsive columnWidth/gap)
  *   - measuredCell (ResizeObserver-driven content heights)
- *   - animate (View Transitions integration)
+ *   - startViewTransition (safe wrapper for View Transitions API)
  *   - virtualize (viewport-filtered visibleCells)
  */
 import { describe, it, expect, assert } from 'vitest'
@@ -63,51 +63,8 @@ describe('breakpoints', () => {
   })
 })
 
-describe('animate', () => {
-  it('sets view-transition-name on each cell wrapper', async () => {
-    function Test() {
-      const { stableCells, getGridProps, getCellProps } = useMasonry(
-        [heightCell('alpha', 50), heightCell('beta', 50)],
-        { gridWidth: 200, columnWidth: 100, gap: 0, animate: true },
-      )
-      return (
-        <div {...getGridProps({ className: 'grid' })}>
-          {stableCells.map((c) => (
-            <div key={c.id} {...getCellProps(c)} data-id={c.id} />
-          ))}
-        </div>
-      )
-    }
-
-    const screen = await render(<Test />)
-    const a = $(screen.container, '[data-id="alpha"]')
-    const b = $(screen.container, '[data-id="beta"]')
-    expect(a.style.viewTransitionName).toBe('mk-alpha')
-    expect(b.style.viewTransitionName).toBe('mk-beta')
-  })
-
-  it('does NOT set view-transition-name when animate is off', async () => {
-    function Test() {
-      const { stableCells, getGridProps, getCellProps } = useMasonry([heightCell('a', 50)], {
-        gridWidth: 200,
-        columnWidth: 100,
-        gap: 0,
-      })
-      return (
-        <div {...getGridProps({ className: 'grid' })}>
-          {stableCells.map((c) => (
-            <div key={c.id} {...getCellProps(c)} data-id={c.id} />
-          ))}
-        </div>
-      )
-    }
-
-    const screen = await render(<Test />)
-    const a = $(screen.container, '[data-id="a"]')
-    expect(a.style.viewTransitionName).toBe('')
-  })
-
-  it('startViewTransition eventually runs the callback (sync or async)', async () => {
+describe('startViewTransition', () => {
+  it('eventually runs the callback (sync or async)', async () => {
     await new Promise<void>((resolve) => {
       startViewTransition(() => {
         resolve()
@@ -115,7 +72,9 @@ describe('animate', () => {
     })
     // If we got here, the callback ran. The API is a fire-and-forget wrapper;
     // in browsers without View Transitions it runs synchronously, otherwise
-    // inside the browser's transition scheduler.
+    // inside the browser's transition scheduler. Consumers pair this with
+    // `viewTransitionName: 'mk-' + cell.id` on each animating cell — the
+    // hook does not do that wiring.
     expect(true).toBe(true)
   })
 })
@@ -123,15 +82,28 @@ describe('animate', () => {
 describe('measuredCell', () => {
   it('reflows once the content height is measured', async () => {
     function Test() {
-      const { stableCells, getGridProps, getCellProps } = useMasonry(
+      const { stableCells, gridRef, cellRef, layout } = useMasonry(
         [measuredCell('a', { estimatedHeight: 20 }), heightCell('b', 50)],
         { gridWidth: 200, columnWidth: 100, gap: 0 },
       )
       return (
-        <div {...getGridProps({ className: 'grid' })}>
-          {stableCells.map((c) => (
-            <div key={c.id} {...getCellProps(c)} data-id={c.id}>
-              {c.id === 'a' ? <div style={{ height: 150, width: 100 }}>content</div> : null}
+        <div ref={gridRef} style={{ position: 'relative', height: layout.height }}>
+          {stableCells.map((cell) => (
+            <div
+              key={cell.id}
+              ref={cellRef(cell.id)}
+              data-id={cell.id}
+              style={{
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                width: cell.width,
+                // Omit `height` for measured cells so content drives the box.
+                ...(cell.id === 'a' ? {} : { height: cell.height }),
+                transform: `translate(${cell.x}px, ${cell.y}px)`,
+              }}
+            >
+              {cell.id === 'a' ? <div style={{ height: 150, width: 100 }}>content</div> : null}
             </div>
           ))}
         </div>
@@ -146,27 +118,6 @@ describe('measuredCell', () => {
     await expect
       .poll(() => Math.round(a.getBoundingClientRect().height), { timeout: 1000 })
       .toBe(150)
-  })
-
-  it('omits explicit `height` on the wrapper so content drives the box', async () => {
-    function Test() {
-      const { stableCells, getGridProps, getCellProps } = useMasonry([measuredCell('a')], {
-        gridWidth: 200,
-        columnWidth: 100,
-        gap: 0,
-      })
-      return (
-        <div {...getGridProps()}>
-          {stableCells.map((c) => (
-            <div key={c.id} {...getCellProps(c)} data-id={c.id} />
-          ))}
-        </div>
-      )
-    }
-
-    const screen = await render(<Test />)
-    const a = $(screen.container, '[data-id="a"]')
-    expect(a.style.height).toBe('')
   })
 })
 
@@ -187,7 +138,7 @@ describe('virtualize', () => {
     const cells = Array.from({ length: 50 }, (_, i) => heightCell(`c${i}`, 100))
 
     function Test() {
-      const { stableCells, visibleCells, getGridProps, getCellProps } = useMasonry(cells, {
+      const { stableCells, visibleCells, gridRef, cellRef, layout } = useMasonry(cells, {
         gridWidth: 200,
         columnWidth: 200,
         gap: 0,
@@ -195,9 +146,26 @@ describe('virtualize', () => {
       })
       return (
         <>
-          <div {...getGridProps({ className: 'grid' })} data-visible={visibleCells.length}>
-            {visibleCells.map((c) => (
-              <div key={c.id} {...getCellProps(c)} data-id={c.id} />
+          <div
+            ref={gridRef}
+            className="grid"
+            data-visible={visibleCells.length}
+            style={{ position: 'relative', height: layout.height }}
+          >
+            {visibleCells.map((cell) => (
+              <div
+                key={cell.id}
+                ref={cellRef(cell.id)}
+                data-id={cell.id}
+                style={{
+                  position: 'absolute',
+                  top: 0,
+                  left: 0,
+                  width: cell.width,
+                  height: cell.height,
+                  transform: `translate(${cell.x}px, ${cell.y}px)`,
+                }}
+              />
             ))}
           </div>
           <div data-stable={stableCells.length} />
@@ -229,17 +197,34 @@ describe('virtualize', () => {
     ]
 
     function Test() {
-      const { visibleCells, getGridProps, getCellProps, layout } = useMasonry(cells, {
+      const { visibleCells, gridRef, cellRef, layout } = useMasonry(cells, {
         gridWidth: 200,
         columnWidth: 200,
         gap: 0,
         virtualize: { overscan: 50 },
       })
       return (
-        <div {...getGridProps({ className: 'grid' })} data-height={layout.height}>
-          {visibleCells.map((c) => (
-            <div key={c.id} {...getCellProps(c)} data-id={c.id}>
-              {c.id === 'm1' ? <div style={{ height: 200, width: 200 }}>measured</div> : null}
+        <div
+          ref={gridRef}
+          className="grid"
+          data-height={layout.height}
+          style={{ position: 'relative', height: layout.height }}
+        >
+          {visibleCells.map((cell) => (
+            <div
+              key={cell.id}
+              ref={cellRef(cell.id)}
+              data-id={cell.id}
+              style={{
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                width: cell.width,
+                ...(cell.id === 'm1' ? {} : { height: cell.height }),
+                transform: `translate(${cell.x}px, ${cell.y}px)`,
+              }}
+            >
+              {cell.id === 'm1' ? <div style={{ height: 200, width: 200 }}>measured</div> : null}
             </div>
           ))}
         </div>
