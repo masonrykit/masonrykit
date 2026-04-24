@@ -110,6 +110,82 @@ describe('issue #9 — adding measured cells after measurement', () => {
   })
 })
 
+describe('StrictMode — tracker survives simulated unmount/remount', () => {
+  it('reflows when a cell resizes after StrictMode has settled', async () => {
+    // StrictMode simulates an unmount/remount by running the cleanup
+    // useEffect between the two mount passes, which disconnects the
+    // height tracker and nulls `trackerRef.current`. If no mechanism
+    // recovers the tracker, a cell resizing AFTER the initial settle
+    // won't be measured and the layout won't reflow.
+    //
+    // This test mounts in StrictMode, waits for initial measurements,
+    // then toggles a cell's inner content from 150px to 250px tall and
+    // asserts the grid height grows accordingly.
+    function Harness() {
+      const [tall, setTall] = useState(false)
+      const cells = useMemo(() => [measuredCell('a', { estimatedHeight: 20 })], [])
+      const { stableCells, gridRef, cellRef, measuredIds, layout } = useMasonry(cells, {
+        gridWidth: 100,
+        columnWidth: 100,
+        gap: 0,
+      })
+      return (
+        <>
+          <button
+            type="button"
+            data-testid="grow"
+            onClick={() => {
+              setTall(true)
+            }}
+          />
+          <div
+            ref={gridRef}
+            data-testid="grid"
+            data-height={layout.height}
+            style={{ position: 'relative', height: layout.height }}
+          >
+            {stableCells.map((cell) => (
+              <div
+                key={cell.id}
+                ref={cellRef(cell.id)}
+                data-id={cell.id}
+                style={{
+                  position: 'absolute',
+                  top: 0,
+                  left: 0,
+                  width: cell.width,
+                  height: measuredIds.has(cell.id) ? undefined : cell.height,
+                  transform: `translate(${cell.x}px, ${cell.y}px)`,
+                }}
+              >
+                <div style={{ height: tall ? 250 : 150, width: 100 }}>{cell.id}</div>
+              </div>
+            ))}
+          </div>
+        </>
+      )
+    }
+
+    const screen = await render(
+      <Strict>
+        <Harness />
+      </Strict>,
+    )
+    const grid = $(screen.container, '[data-testid="grid"]')
+
+    // Initial measurement settles at 150.
+    await expect.poll(() => Number(grid.dataset.height), { timeout: 2000 }).toBe(150)
+
+    // Trigger a resize of the cell's content. If the tracker is still
+    // live after StrictMode's simulated cleanup, the ResizeObserver
+    // fires and the layout grows to 250. If the tracker is dead, the
+    // layout stays at 150 and this poll times out.
+    await screen.getByTestId('grow').click()
+
+    await expect.poll(() => Number(grid.dataset.height), { timeout: 2000 }).toBe(250)
+  })
+})
+
 describe('issue #10 — gridRef element mounts after initial render', () => {
   it('attaches the width observer when the grid element arrives after mount', async () => {
     // Simulates a component that shows a loading state first and only mounts

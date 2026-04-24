@@ -209,13 +209,18 @@ export function useMasonry<M = undefined>(
     () => new Map(),
   )
 
-  // The tracker is lazy-initialized inside the per-cell ref callback (see
-  // `cellRef` below). React 18 StrictMode simulates an unmount/remount by
-  // running effect cleanups between the two mount passes, which disconnects
-  // the tracker and nulls it. Creating it on demand in the ref callback
-  // means it gets recreated after a spurious cleanup, since React re-attaches
-  // refs during the remount pass.
+  // Per-cell `ResizeObserver` aggregator, created eagerly on the first
+  // render so the tracker is guaranteed to exist by the time any cell's
+  // ref callback fires (observe/unobserve). `setMeasuredHeights` is a
+  // stable React setter, so the closure below captures a correct
+  // reference regardless of which render created the tracker.
   const trackerRef = useRef<MeasuredHeightTracker | null>(null)
+  trackerRef.current ??= createMeasuredHeightTracker((id, h) => {
+    setMeasuredHeights((prev) => {
+      if (prev.get(id) === h) return prev
+      return new Map(prev).set(id, h)
+    })
+  })
 
   useEffect(
     () => () => {
@@ -276,9 +281,8 @@ export function useMasonry<M = undefined>(
 
   // Per-id ref factory. Returns the shared no-op for non-measured cells
   // (safe to spread on every cell unconditionally). For measured cells,
-  // returns a cached per-id ref callback that lazy-inits the tracker on
-  // attach — any spurious disconnect (StrictMode cleanup) is recovered
-  // from on the next attach.
+  // returns a cached per-id ref callback that calls `tracker.observe` on
+  // attach and `tracker.unobserve` on detach.
   const refCacheRef = useRef(new Map<string, React.RefCallback<HTMLElement>>())
   const cellRef = useCallback(
     (id: string): React.RefCallback<HTMLElement> => {
@@ -287,17 +291,10 @@ export function useMasonry<M = undefined>(
       let refFn = cache.get(id)
       if (!refFn) {
         refFn = (el) => {
-          if (el) {
-            trackerRef.current ??= createMeasuredHeightTracker((tid, h) => {
-              setMeasuredHeights((prev) => {
-                if (prev.get(tid) === h) return prev
-                return new Map(prev).set(tid, h)
-              })
-            })
-            trackerRef.current.observe(id, el)
-          } else {
-            trackerRef.current?.unobserve(id)
-          }
+          const tracker = trackerRef.current
+          if (!tracker) return
+          if (el) tracker.observe(id, el)
+          else tracker.unobserve(id)
         }
         cache.set(id, refFn)
       }
