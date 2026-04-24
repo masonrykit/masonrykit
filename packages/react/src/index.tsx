@@ -211,9 +211,9 @@ export function useMasonry<M = undefined>(
 
   // Per-cell `ResizeObserver` aggregator, created eagerly on the first
   // render so the tracker is guaranteed to exist by the time any cell's
-  // ref callback fires (observe/unobserve). `setMeasuredHeights` is a
-  // stable React setter, so the closure below captures a correct
-  // reference regardless of which render created the tracker.
+  // ref callback fires. `setMeasuredHeights` is a stable React setter,
+  // so the closure captures a correct reference regardless of which
+  // render created the tracker.
   const trackerRef = useRef<MeasuredHeightTracker | null>(null)
   trackerRef.current ??= createMeasuredHeightTracker((id, h) => {
     setMeasuredHeights((prev) => {
@@ -222,13 +222,35 @@ export function useMasonry<M = undefined>(
     })
   })
 
-  useEffect(
-    () => () => {
+  // Elements currently observed, keyed by cell id. The cell ref callback
+  // updates this map on attach/detach. The effect below re-observes every
+  // tracked element on mount ONLY after a cleanup has run, which recovers
+  // from React 18 StrictMode's simulated unmount/remount: the cleanup
+  // disconnects the tracker, then the setup re-attaches observers for
+  // every previously-tracked element.
+  //
+  // Skipping the replay on the very first mount matters: the per-cell ref
+  // callback already calls `tracker.observe(id, el)` during the same
+  // commit, so replaying would disconnect + recreate an RO for every
+  // measured cell — doubling `ResizeObserver` allocations and triggering
+  // redundant initial `onChange` notifications.
+  const observedElementsRef = useRef(new Map<string, Element>())
+  const shouldReplayRef = useRef(false)
+
+  useEffect(() => {
+    const tracker = trackerRef.current
+    if (!tracker) return NOOP_CLEANUP
+    if (shouldReplayRef.current) {
+      for (const [id, element] of observedElementsRef.current) {
+        tracker.observe(id, element)
+      }
+    }
+    return () => {
       trackerRef.current?.disconnect()
       trackerRef.current = null
-    },
-    [],
-  )
+      shouldReplayRef.current = true
+    }
+  }, [])
 
   // Swap measured cells out for a `HeightCell` once we have their real height;
   // leave them as-is otherwise (core's `computeLayout` falls back to
@@ -291,10 +313,24 @@ export function useMasonry<M = undefined>(
       let refFn = cache.get(id)
       if (!refFn) {
         refFn = (el) => {
-          const tracker = trackerRef.current
-          if (!tracker) return
-          if (el) tracker.observe(id, el)
-          else tracker.unobserve(id)
+          if (el) {
+            // Track the element so the mount effect can re-attach the
+            // observer after StrictMode's simulated unmount/remount.
+            observedElementsRef.current.set(id, el)
+            // Tracker is eagerly initialized in the render body, but the
+            // cleanup effect can null it between StrictMode passes — on
+            // a second attach after cleanup, `??=` recreates the tracker.
+            trackerRef.current ??= createMeasuredHeightTracker((tid, h) => {
+              setMeasuredHeights((prev) => {
+                if (prev.get(tid) === h) return prev
+                return new Map(prev).set(tid, h)
+              })
+            })
+            trackerRef.current.observe(id, el)
+          } else {
+            observedElementsRef.current.delete(id)
+            trackerRef.current?.unobserve(id)
+          }
         }
         cache.set(id, refFn)
       }
