@@ -186,6 +186,107 @@ describe('StrictMode — tracker survives simulated unmount/remount', () => {
   })
 })
 
+describe('issue #15 — measuredHeights stays empty under StrictMode remount', () => {
+  it('re-observes previously-attached cells after the tracker is cleaned up', async () => {
+    // Issue #15's root-cause claim (paraphrased): React 18 StrictMode
+    // simulates an unmount/remount between the two mount passes; the
+    // cleanup effect disconnects the tracker and nulls its ref; React
+    // does NOT re-fire cached callback refs on the remount, so the new
+    // tracker ends up with zero observers and all measurements are lost.
+    //
+    // The hook defends against this with an `observedElementsRef` map
+    // that the setup effect replays on mount — so even if the cleanup
+    // ran spuriously between passes, every still-attached element gets
+    // re-observed. This test simulates that flow by unmounting and
+    // remounting the grid (forcing the effect cleanup + setup to run),
+    // then asserting the measurement still reaches state.
+    function Harness({ mounted }: { mounted: boolean }) {
+      const cells = useMemo(() => [measuredCell('a', { estimatedHeight: 20 })], [])
+      const { stableCells, gridRef, cellRef, measuredIds, layout } = useMasonry(cells, {
+        gridWidth: 100,
+        columnWidth: 100,
+        gap: 0,
+      })
+      if (!mounted) return null
+      return (
+        <div
+          ref={gridRef}
+          data-testid="grid"
+          data-height={layout.height}
+          style={{ position: 'relative', height: layout.height }}
+        >
+          {stableCells.map((cell) => (
+            <div
+              key={cell.id}
+              ref={cellRef(cell.id)}
+              data-id={cell.id}
+              style={{
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                width: cell.width,
+                height: measuredIds.has(cell.id) ? undefined : cell.height,
+                transform: `translate(${cell.x}px, ${cell.y}px)`,
+              }}
+            >
+              <div style={{ height: 180, width: 100 }}>{cell.id}</div>
+            </div>
+          ))}
+        </div>
+      )
+    }
+
+    // Keep the Harness mounted (so useMasonry state persists) but toggle
+    // the grid subtree so cellRef sees ref(null) then ref(el) again,
+    // analogous to what StrictMode does between its two mount passes.
+    function Wrapper() {
+      const [mounted, setMounted] = useState(true)
+      return (
+        <>
+          <button
+            type="button"
+            data-testid="toggle"
+            onClick={() => {
+              setMounted((m) => !m)
+            }}
+          />
+          <Harness mounted={mounted} />
+        </>
+      )
+    }
+
+    // `<Strict>` is load-bearing here: React double-invokes the hook's
+    // mount effect on initial render (cleanup disconnects the tracker,
+    // setup re-observes everything from `observedElementsRef`). Without
+    // the wrapper this test would only exercise the simpler cellRef
+    // detach/re-attach cycle, not the effect's replay path.
+    const screen = await render(
+      <Strict>
+        <Wrapper />
+      </Strict>,
+    )
+    const grid = () => $(screen.container, '[data-testid="grid"]')
+
+    // Initial measurement settles.
+    await expect.poll(() => Number(grid().dataset.height), { timeout: 2000 }).toBe(180)
+
+    // Unmount the grid subtree — triggers cellRef(null) and, if
+    // `observedElementsRef` doesn't track elements, the tracker forgets
+    // about them.
+    await screen.getByTestId('toggle').click()
+    expect(screen.container.querySelector('[data-testid="grid"]')).toBeNull()
+
+    // Remount.
+    await screen.getByTestId('toggle').click()
+
+    // The grid should re-measure and settle at 180 again. With the fix,
+    // the effect re-runs its setup and re-observes any still-tracked
+    // elements — but here the element is freshly mounted, so the cellRef
+    // attach path must also still work.
+    await expect.poll(() => Number(grid().dataset.height), { timeout: 2000 }).toBe(180)
+  })
+})
+
 describe('issue #10 — gridRef element mounts after initial render', () => {
   it('attaches the width observer when the grid element arrives after mount', async () => {
     // Simulates a component that shows a loading state first and only mounts
