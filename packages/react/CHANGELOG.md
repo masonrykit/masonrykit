@@ -1,5 +1,50 @@
 # @masonrykit/react
 
+## 0.2.3
+
+### Patch Changes
+
+- [#17](https://github.com/masonrykit/masonrykit/pull/17) [`9a0c009`](https://github.com/masonrykit/masonrykit/commit/9a0c009367ed4af4c5fa7e41dcc3f4760198a013) Thanks [@lifeiscontent](https://github.com/lifeiscontent)! - perf(react): batch measurement updates via rAF; rAF-throttle scroll tick; prune ref cache on cells change
+
+  Three internal optimizations to `useMasonry`, behaviour-neutral.
+
+  **1. rAF-batched `setMeasuredHeights` updates.** Previously each `ResizeObserver` callback did `setMeasuredHeights(prev => new Map(prev).set(id, h))`. On initial mount of a grid with N measured cells, that's N updater calls, each allocating a new Map copy of size up to N — O(N²) Map allocations. Now incoming measurements buffer in a pending map and flush once per frame via `requestAnimationFrame`, collapsing to a single state commit and one Map allocation per frame. Scales O(N²) → O(N) for large initial mounts. Tracker creation is extracted into an `ensureTracker` helper so the render-body eager init, the mount effect, and the per-cell ref callback all share the same batched `onChange` closure.
+
+  **2. rAF-throttled virtualization scroll/resize handler.** The listener that ticked `viewportTick` on every scroll event now coalesces ticks through `requestAnimationFrame`. On 120 Hz input devices this cuts re-renders from ~120/s to frame-rate-bound, matching the pattern used in `@masonrykit/browser`'s `observeElementWidth`.
+
+  **3. Ref cache pruning on cells change.** The internal `refCacheRef` per-id ref map previously accumulated entries for every id ever passed to the hook. In long-running apps with high cell churn (infinite scroll, filter changes) that grew unboundedly. An effect keyed on `cells` now drops cache entries for ids that are no longer in the input.
+
+  No API changes. All 127 browser-mode tests pass; one new test (`perf — ref cache prune on cells removal`) covers the re-measurement path after remove + re-add.
+
+- [#16](https://github.com/masonrykit/masonrykit/pull/16) [`9496f01`](https://github.com/masonrykit/masonrykit/commit/9496f01be1fa058893cc73946502ce2e037db65a) Thanks [@lifeiscontent](https://github.com/lifeiscontent)! - fix(react): restore measured-height tracking under React 18 StrictMode (closes [#9](https://github.com/masonrykit/masonrykit/issues/9) follow-up, [#15](https://github.com/masonrykit/masonrykit/issues/15))
+
+  The 0.2.1 fix for issue [#9](https://github.com/masonrykit/masonrykit/issues/9) moved the measured-height tracker's creation from the render body into the per-cell `cellRef` callback. In real-world React 18 StrictMode usage this caused `measuredHeights` to stay permanently empty — the `ResizeObserver` callbacks were wired up but never propagated updates.
+
+  Two changes restore correct behaviour:
+  1. **Eager tracker init in the render body** (revert of 0.2.1). `trackerRef.current ??= createMeasuredHeightTracker(...)` is back at the top level of `useMasonry` so the tracker is guaranteed to exist by the time any cell ref fires.
+
+  2. **Replay observations on every mount effect**. A new `observedElementsRef` map tracks which elements are currently attached. The cleanup-only `useEffect` is replaced with one that, on setup, re-observes every tracked element:
+
+     ```ts
+     useEffect(() => {
+       const tracker = trackerRef.current
+       if (!tracker) return () => {}
+       for (const [id, element] of observedElementsRef.current) {
+         tracker.observe(id, element)
+       }
+       return () => {
+         trackerRef.current?.disconnect()
+         trackerRef.current = null
+       }
+     }, [])
+     ```
+
+     React 18 StrictMode runs cleanup then setup between its two mount passes. The first pass observes everything; the cleanup disconnects; the second setup pass re-observes every still-attached element from `observedElementsRef`. Measurements resume correctly.
+
+  The 0.2.1 fix for issue [#10](https://github.com/masonrykit/masonrykit/issues/10) (track the grid element in `useState` so the auto-width observer attaches when the grid mounts late) is retained.
+
+  Thanks to @lifeiscontent for the detailed root-cause analysis in [#15](https://github.com/masonrykit/masonrykit/issues/15).
+
 ## 0.2.2
 
 ### Patch Changes
