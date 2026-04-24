@@ -98,8 +98,9 @@ describe('measuredCell', () => {
                 top: 0,
                 left: 0,
                 width: cell.width,
-                // Omit `height` for measured cells so content drives the box.
-                ...(cell.id === 'a' ? {} : { height: cell.height }),
+                // `undefined` omits the property so measured cells keep
+                // `height: auto` from the UA default and content drives the box.
+                height: cell.id === 'a' ? undefined : cell.height,
                 transform: `translate(${cell.x}px, ${cell.y}px)`,
               }}
             >
@@ -220,7 +221,7 @@ describe('virtualize', () => {
                 top: 0,
                 left: 0,
                 width: cell.width,
-                ...(cell.id === 'm1' ? {} : { height: cell.height }),
+                height: cell.id === 'm1' ? undefined : cell.height,
                 transform: `translate(${cell.x}px, ${cell.y}px)`,
               }}
             >

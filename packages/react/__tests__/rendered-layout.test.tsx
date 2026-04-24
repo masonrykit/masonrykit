@@ -53,7 +53,9 @@ function cellStyle<M>(cell: LayoutCell<M>, isMeasured = false): CSSProperties {
     top: 0,
     left: 0,
     width: cell.width,
-    ...(isMeasured ? {} : { height: cell.height }),
+    // `undefined` tells React to omit the property, so measured cells keep
+    // `height: auto` from the UA default.
+    height: isMeasured ? undefined : cell.height,
     transform: `translate(${cell.x}px, ${cell.y}px)`,
   }
 }

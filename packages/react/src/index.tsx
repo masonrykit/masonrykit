@@ -27,7 +27,6 @@ import {
   type HeightCell,
   type Layout,
   type LayoutCell,
-  type MeasuredCell,
   type Stamp,
   type Viewport,
 } from '@masonrykit/core'
@@ -173,21 +172,23 @@ export function useMasonry<M = undefined>(
     virtualize = false,
   } = options
 
-  const gridElRef = useRef<HTMLElement | null>(null)
+  // Track the grid element in state (not a plain ref) so the effect below
+  // re-runs when it becomes available. Components that render a loading
+  // state before the grid would otherwise see the effect latch on `null`
+  // at first mount and never re-attach the `ResizeObserver`.
+  //
+  // `setGridEl` from `useState` is already a stable, element-taking callback —
+  // we return it directly as `gridRef` (no `useCallback` wrapper needed).
+  const [gridEl, setGridEl] = useState<HTMLElement | null>(null)
   const [measuredWidth, setMeasuredWidth] = useState(initialGridWidth)
-
-  const gridRef = useCallback((el: HTMLElement | null) => {
-    gridElRef.current = el
-  }, [])
 
   useEffect(() => {
     if (gridWidth !== undefined) return NOOP_CLEANUP
-    const el = gridElRef.current
-    if (!el) return NOOP_CLEANUP
-    return observeElementWidth(el, (w) => {
+    if (!gridEl) return NOOP_CLEANUP
+    return observeElementWidth(gridEl, (w) => {
       setMeasuredWidth(Math.max(0, Math.floor(w)))
     })
-  }, [gridWidth])
+  }, [gridWidth, gridEl])
 
   const resolvedWidth = gridWidth ?? measuredWidth
 
@@ -208,13 +209,13 @@ export function useMasonry<M = undefined>(
     () => new Map(),
   )
 
+  // The tracker is lazy-initialized inside the per-cell ref callback (see
+  // `cellRef` below). React 18 StrictMode simulates an unmount/remount by
+  // running effect cleanups between the two mount passes, which disconnects
+  // the tracker and nulls it. Creating it on demand in the ref callback
+  // means it gets recreated after a spurious cleanup, since React re-attaches
+  // refs during the remount pass.
   const trackerRef = useRef<MeasuredHeightTracker | null>(null)
-  trackerRef.current ??= createMeasuredHeightTracker((id, h) => {
-    setMeasuredHeights((prev) => {
-      if (prev.get(id) === h) return prev
-      return new Map(prev).set(id, h)
-    })
-  })
 
   useEffect(
     () => () => {
@@ -273,34 +274,36 @@ export function useMasonry<M = undefined>(
     ],
   )
 
-  // Per-id ref callback for measured cells. Cached so the same function is
-  // handed back every render — React uses function identity to decide when
-  // to re-run the attach/cleanup cycle.
+  // Per-id ref factory. Returns the shared no-op for non-measured cells
+  // (safe to spread on every cell unconditionally). For measured cells,
+  // returns a cached per-id ref callback that lazy-inits the tracker on
+  // attach — any spurious disconnect (StrictMode cleanup) is recovered
+  // from on the next attach.
   const refCacheRef = useRef(new Map<string, React.RefCallback<HTMLElement>>())
-  const getMeasureRef = useCallback((id: string): React.RefCallback<HTMLElement> => {
-    const cache = refCacheRef.current
-    let refFn = cache.get(id)
-    if (!refFn) {
-      refFn = (el) => {
-        const tracker = trackerRef.current
-        if (!tracker) return
-        if (el) tracker.observe(id, el)
-        else tracker.unobserve(id)
-      }
-      cache.set(id, refFn)
-    }
-    return refFn
-  }, [])
-
-  // Public per-id ref factory. Returns the tracker-observe ref for measured
-  // cells, or a shared no-op for others — so consumers can spread
-  // `cellRef(cell.id)` unconditionally and pay zero cost for non-measured.
   const cellRef = useCallback(
     (id: string): React.RefCallback<HTMLElement> => {
-      if (measuredIds.has(id)) return getMeasureRef(id)
-      return NOOP_REF
+      if (!measuredIds.has(id)) return NOOP_REF
+      const cache = refCacheRef.current
+      let refFn = cache.get(id)
+      if (!refFn) {
+        refFn = (el) => {
+          if (el) {
+            trackerRef.current ??= createMeasuredHeightTracker((tid, h) => {
+              setMeasuredHeights((prev) => {
+                if (prev.get(tid) === h) return prev
+                return new Map(prev).set(tid, h)
+              })
+            })
+            trackerRef.current.observe(id, el)
+          } else {
+            trackerRef.current?.unobserve(id)
+          }
+        }
+        cache.set(id, refFn)
+      }
+      return refFn
     },
-    [measuredIds, getMeasureRef],
+    [measuredIds],
   )
 
   const stableOrderRef = useRef<string[]>([])
@@ -348,9 +351,8 @@ export function useMasonry<M = undefined>(
 
   const visibleCells = useMemo<readonly LayoutCell<M>[]>(() => {
     if (!virtualizeEnabled) return stableCells
-    const grid = gridElRef.current
-    if (!grid) return stableCells
-    const gridRect = grid.getBoundingClientRect()
+    if (!gridEl) return stableCells
+    const gridRect = gridEl.getBoundingClientRect()
     let viewport: Viewport
     if (virtualizeScrollParent) {
       const rect = virtualizeScrollParent.getBoundingClientRect()
@@ -393,13 +395,14 @@ export function useMasonry<M = undefined>(
     viewportTick,
     measuredIds,
     measuredHeights,
+    gridEl,
   ])
 
   return {
     layout,
     stableCells,
     visibleCells,
-    gridRef,
+    gridRef: setGridEl,
     cellRef,
     measuredIds,
   }
