@@ -53,3 +53,4 @@ coverage/
 
 # pnpm store (usually outside repo, but ignore if present)
 .pnpm-store/
+.claude/
