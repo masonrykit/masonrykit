@@ -38,8 +38,8 @@ describe('useMasonry - hook behavior', () => {
 
     try {
       function AutoWidth() {
-        const { getGridProps } = useMasonry([heightCell('a', 100)], { columnWidth: 100 })
-        return <div {...getGridProps()} />
+        const { gridRef } = useMasonry([heightCell('a', 100)], { columnWidth: 100 })
+        return <div ref={gridRef} />
       }
 
       const { unmount } = await render(<AutoWidth />)
@@ -132,14 +132,26 @@ describe('useMasonry - hook behavior', () => {
       heightCell(`c${i}`, 20 + (i % 5) * 10),
     )
 
-    const { getGridProps, getCellProps, stableCells } = (
+    const { gridRef, cellRef, stableCells, layout } = (
       await renderHook(() => useMasonry(cells, { gridWidth: 600, columnWidth: 100, gap: 0 }))
     ).result.current
 
     const screen = await render(
-      <div {...getGridProps({ className: 'grid' })}>
+      <div ref={gridRef} className="grid" style={{ position: 'relative', height: layout.height }}>
         {stableCells.map((cell) => (
-          <div key={cell.id} {...getCellProps(cell)} data-id={cell.id} />
+          <div
+            key={cell.id}
+            ref={cellRef(cell.id)}
+            data-id={cell.id}
+            style={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              width: cell.width,
+              height: cell.height,
+              transform: `translate(${cell.x}px, ${cell.y}px)`,
+            }}
+          />
         ))}
       </div>,
     )

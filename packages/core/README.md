@@ -6,6 +6,8 @@
 
 Pure, framework-agnostic math for masonry-style grid layouts. Zero runtime dependencies, no DOM, no React — just input cells in, positions out.
 
+If you're rendering to the DOM, the higher-level packages — [`@masonrykit/browser`](../browser/) and [`@masonrykit/react`](../react/) — wrap this core in ergonomic helpers that hand you the layout data plus the refs/observers you need to wire the DOM. Every visual decision (element choice, CSS var naming, positioning strategy, animation) lives in your code. Core itself has no opinion on output.
+
 ## Install
 
 ```bash

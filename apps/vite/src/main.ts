@@ -28,6 +28,11 @@ import {
 
 import './style.css'
 
+// Feature detect View Transitions once at module load. Used below to gate
+// `data-animate` so browsers without VT fall back to CSS transitions instead
+// of "no motion at all" (suppressing CSS while VT silently no-ops).
+const VT_SUPPORTED = typeof document.startViewTransition === 'function'
+
 /* -- Types ---------------------------------------------------------------- */
 
 interface PhotoMeta {
@@ -239,7 +244,15 @@ function button(
   const btn = document.createElement('button')
   btn.type = 'button'
   btn.textContent = text
-  btn.className = variant === 'primary' ? 'mk-btn mk-btn-primary w-full' : 'mk-btn w-full'
+  // Same button recipe as the React demo — inline Tailwind instead of a
+  // component class in style.css.
+  const base =
+    'w-full inline-flex items-center justify-center px-3 py-2 rounded-md text-xs font-medium border cursor-pointer transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-emerald-500/60 focus-visible:outline-offset-2'
+  const variantClasses =
+    variant === 'primary'
+      ? 'bg-zinc-100 text-zinc-950 border-zinc-100 hover:bg-white hover:border-white'
+      : 'bg-white/4 text-zinc-300 border-white/10 hover:bg-white/8 hover:border-white/15'
+  btn.className = `${base} ${variantClasses}`
   btn.addEventListener('click', onClick)
   return btn
 }
@@ -300,8 +313,7 @@ shell.className = 'grid lg:grid-cols-[320px_1fr] min-h-screen'
 
 const sidebar = document.createElement('aside')
 sidebar.className =
-  'border-b lg:border-b-0 lg:border-r border-white/6 bg-zinc-950/80 backdrop-blur-xl lg:sticky lg:top-0 lg:h-screen lg:overflow-y-auto'
-sidebar.style.viewTransitionName = 'mk-sidebar'
+  'border-b lg:border-b-0 lg:border-r border-white/6 bg-zinc-950/80 backdrop-blur-xl lg:sticky lg:top-0 lg:h-screen lg:overflow-y-auto [view-transition-name:mk-sidebar]'
 
 const brand = document.createElement('div')
 brand.className = 'p-5 border-b border-white/6'
@@ -516,8 +528,7 @@ mainArea.className = 'min-w-0'
 
 const statusStrip = document.createElement('div')
 statusStrip.className =
-  'sticky top-0 z-10 flex items-center gap-2 px-6 py-3 border-b border-white/6 bg-zinc-950/80 backdrop-blur-xl'
-statusStrip.style.viewTransitionName = 'mk-statusbar'
+  'sticky top-0 z-10 flex items-center gap-2 px-6 py-3 border-b border-white/6 bg-zinc-950/80 backdrop-blur-xl [view-transition-name:mk-statusbar]'
 
 const colsPill = statusPill('Cols', '0')
 const cellsPill = statusPill('Cells', '0')
@@ -531,7 +542,13 @@ statusStrip.append(activeWrap)
 const gridWrap = document.createElement('div')
 gridWrap.className = 'p-6'
 const grid = document.createElement('div')
-grid.className = 'relative w-full min-h-80'
+// `data-animate` (set in the render loop) flips every descendant cell's
+// CSS transition off via `group-data-[animate=true]:transition-none`, so
+// View Transitions own the motion when animating. `h-(--mk-grid-h)` pulls
+// the height from the CSS var the render loop sets. `w-full` gives
+// ResizeObserver something to measure; `min-h-80` avoids a zero-height
+// grid on first paint.
+grid.className = 'relative group w-full min-h-80 h-(--mk-grid-h)'
 gridWrap.append(grid)
 
 mainArea.append(statusStrip, gridWrap)
@@ -559,8 +576,18 @@ const nodes = new Map<string, CellNode>()
 
 function buildCell(): CellNode {
   const el = document.createElement('div')
+  // className is stable across renders. The per-frame churn lives in the
+  // `--mk-cell-*` custom properties set by the render loop, which the
+  // `translate-x-(--mk-cell-x)` / `w-(--mk-cell-w)` / etc. utilities
+  // consume. Unset vars resolve to the property's initial value — `auto`
+  // for height, `none` for view-transition-name.
+  //
+  // Deliberately no `will-change`: it would promote every cell to its own
+  // compositor layer permanently, which is wasteful when the grid is idle.
+  // Modern browsers auto-promote elements that are actually transitioning,
+  // which is the behaviour we want here.
   el.className =
-    'absolute top-0 left-0 box-border [transition:translate_300ms_cubic-bezier(0.22,1,0.36,1),width_300ms_cubic-bezier(0.22,1,0.36,1),height_300ms_cubic-bezier(0.22,1,0.36,1)] [will-change:translate,width,height]'
+    'absolute top-0 left-0 box-border w-(--mk-cell-w) h-(--mk-cell-h) translate-x-(--mk-cell-x) translate-y-(--mk-cell-y) [view-transition-name:var(--mk-cell-vt-name)] transition-all duration-300 ease-smooth group-data-[animate=true]:transition-none'
   return { el, mode: null, sizeText: null, metaText: null, observed: false }
 }
 
@@ -688,7 +715,14 @@ function render(width: number): void {
     ...(stamps ? { stamps } : {}),
   })
 
-  grid.style.height = `${layout.height}px`
+  // Grid height flows through `--mk-grid-h`; the `h-(--mk-grid-h)` class
+  // reads it.
+  grid.style.setProperty('--mk-grid-h', `${layout.height}px`)
+  // `data-animate` flips cells' CSS transition off so View Transitions
+  // own the motion without fighting a doubled `transform` transition. Gated
+  // on VT support — without it, CSS transitions are the fallback.
+  if (state.animate && VT_SUPPORTED) grid.dataset.animate = 'true'
+  else delete grid.dataset.animate
 
   // Which cells to actually render.
   let visible = layout.cells
@@ -700,8 +734,9 @@ function render(width: number): void {
       { top: 0, bottom: window.innerHeight },
       400,
     )
-    // Always keep unmeasured measured cells in the DOM so their RO can fire
-    // before the user scrolls there — same trick the React hook uses.
+    // Always keep unmeasured cells in the DOM so their ResizeObserver can
+    // fire before the user scrolls to them — otherwise their real height
+    // lands mid-scroll and causes a visible layout shift.
     const inBase = new Set(base.map((c) => c.id))
     visible = layout.cells.filter((c) => {
       if (inBase.has(c.id)) return true
@@ -729,18 +764,19 @@ function render(width: number): void {
     }
 
     const isMeasured = measuredIds.has(cell.id)
-    node.el.style.width = `${cell.width}px`
-    node.el.style.translate = `${cell.x}px ${cell.y}px`
-    if (isMeasured) {
-      node.el.style.removeProperty('height')
-    } else {
-      node.el.style.height = `${cell.height}px`
-    }
-    node.el.style.viewTransitionName = state.animate ? `mk-${cell.id}` : ''
+    // Layout values flow through `--mk-cell-*` vars. Unset vars resolve to
+    // the property's initial value: `auto` height lets content drive
+    // measured cells; `none` disables view-transition-name when not
+    // animating.
+    node.el.style.setProperty('--mk-cell-x', `${cell.x}px`)
+    node.el.style.setProperty('--mk-cell-y', `${cell.y}px`)
+    node.el.style.setProperty('--mk-cell-w', `${cell.width}px`)
+    if (isMeasured) node.el.style.removeProperty('--mk-cell-h')
+    else node.el.style.setProperty('--mk-cell-h', `${cell.height}px`)
+    if (state.animate) node.el.style.setProperty('--mk-cell-vt-name', `mk-${cell.id}`)
+    else node.el.style.removeProperty('--mk-cell-vt-name')
 
     if (isMeasured) {
-      // `cell.meta` is preserved through computeLayout — no need to look up
-      // the original cell by id.
       renderMeasuredCard(node, cell.meta, cell.width)
       // Observe once per node lifetime. Calling observe() on every render
       // would disconnect + recreate the ResizeObserver, thrashing layout.

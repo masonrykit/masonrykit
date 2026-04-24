@@ -6,6 +6,8 @@
 
 DOM integrations on top of [`@masonrykit/core`](../core/). Framework-agnostic — use it directly for a vanilla masonry, or build your own framework binding. The React binding (`@masonrykit/react`) composes these primitives.
 
+This package ships no layout CSS and sets nothing on your elements. The utilities here just wrap the three APIs the DOM makes painful on its own — a debounced `ResizeObserver`, a measured-height tracker that de-dupes reports, and a safe View Transitions wrapper. Everything else — the elements, the styles, the positioning strategy — is your code.
+
 ## Install
 
 ```bash
@@ -15,6 +17,29 @@ npm install @masonrykit/browser
 All exports from `@masonrykit/core` are re-exported — you don't need to install core separately.
 
 ## Quick start
+
+**Recommended pattern:** pipe the dynamic layout values through inline CSS custom properties and let a stylesheet consume them. The className and CSS rules stay stable across renders — only the var values change — so the browser caches selector matching, skips style recalc, and the resulting `translate` update rides the compositor thread. Much cheaper than mutating `transform` / `width` / `height` inline per frame.
+
+```html
+<link rel="stylesheet" href="./masonry.css" />
+<div class="grid"></div>
+```
+
+```css
+/* masonry.css — you own this file; no library styles are injected. */
+.grid {
+  position: relative;
+  height: var(--grid-h);
+}
+.cell {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: var(--w);
+  height: var(--h, auto); /* `auto` fallback for measured cells */
+  translate: var(--x) var(--y);
+}
+```
 
 ```ts
 import { computeLayout, heightCell, aspectCell, observeElementWidth } from '@masonrykit/browser'
@@ -29,14 +54,36 @@ const dispose = observeElementWidth(grid, (width) => {
     columnWidth: 200,
     gap: 12,
   })
-  // Apply cell.x / cell.y / cell.width / cell.height to your DOM nodes.
+
+  // Pipe the height through a CSS var; the stylesheet does the rest.
+  grid.style.setProperty('--grid-h', `${layout.height}px`)
+
+  // Minimal shape — a real app would diff nodes across runs. Note that
+  // setting `--x` / `--y` / `--w` instead of `transform` / `width` keeps
+  // the per-cell work in the compositor lane.
+  grid.replaceChildren(
+    ...layout.cells.map((cell) => {
+      const el = document.createElement('div')
+      el.className = 'cell'
+      el.style.setProperty('--x', `${cell.x}px`)
+      el.style.setProperty('--y', `${cell.y}px`)
+      el.style.setProperty('--w', `${cell.width}px`)
+      el.style.setProperty('--h', `${cell.height}px`)
+      el.textContent = cell.id
+      return el
+    }),
+  )
 })
 
 // When tearing down the grid:
 dispose()
 ```
 
-See [`apps/vite/src/main.ts`](../../apps/vite/src/main.ts) in the repo for a fully-featured vanilla playground using every primitive below.
+The var names (`--x`, `--y`, `--w`, `--h`) are your choice — the library doesn't emit or consume any fixed convention. Use `--col`, `--offset-x`, whatever fits your codebase.
+
+See [`apps/vite/src/main.ts`](../../apps/vite/src/main.ts) in the repo for a fully-featured vanilla playground using every primitive below — measured cells, stamps, virtualization, breakpoints, View Transitions. It uses Tailwind 4's `translate-x-(--x)` / `w-(--w)` shorthand to consume the vars inline as utilities instead of a separate stylesheet; the underlying pattern is the same.
+
+**Alternative (simpler, slower under churn):** set `el.style.transform` / `width` / `height` inline every render. Fine for static grids or small (< ~50 cell) playgrounds; reach for the CSS-var pattern once you're animating many cells at 60 fps.
 
 ## API
 
@@ -92,7 +139,7 @@ function startViewTransition(callback: () => void): void
 
 Wraps a callback in [`document.startViewTransition`](https://developer.mozilla.org/en-US/docs/Web/API/Document/startViewTransition) when the browser supports it, so layout changes animate natively. In browsers without View Transitions (Firefox today, older Safari) the callback runs synchronously — no animation, no error.
 
-Pair with `view-transition-name` set on each animating element (in React bindings this is automatic when `animate: true`).
+Pair with `view-transition-name` set on each animating element — in a React component, set it via inline style, a CSS custom property consumed by a stylesheet, or a class.
 
 **React note:** wrap the body in `flushSync` so React's async batching doesn't defer the DOM commit past the browser's snapshot — otherwise the before/after snapshots are identical and no animation runs.
 

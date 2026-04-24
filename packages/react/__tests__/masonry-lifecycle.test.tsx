@@ -51,7 +51,7 @@ type Options = {
 function Grid({ cells, opts }: { cells: readonly Cell[]; opts: Options }) {
   const { columnWidth = 100, gap = 0, gridWidth = 300, horizontalOrder = false, stamps } = opts
 
-  const { stableCells, getGridProps, getCellProps } = useMasonry(cells, {
+  const { stableCells, gridRef, cellRef, layout } = useMasonry(cells, {
     gridWidth,
     columnWidth,
     gap,
@@ -60,9 +60,21 @@ function Grid({ cells, opts }: { cells: readonly Cell[]; opts: Options }) {
   })
 
   return (
-    <div {...getGridProps({ className: 'grid' })}>
+    <div ref={gridRef} className="grid" style={{ position: 'relative', height: layout.height }}>
       {stableCells.map((c) => (
-        <div key={c.id} {...getCellProps(c)} data-id={c.id} />
+        <div
+          key={c.id}
+          ref={cellRef(c.id)}
+          data-id={c.id}
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            width: c.width,
+            height: c.height,
+            transform: `translate(${c.x}px, ${c.y}px)`,
+          }}
+        />
       ))}
     </div>
   )
