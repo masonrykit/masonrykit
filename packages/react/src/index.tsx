@@ -209,18 +209,51 @@ export function useMasonry<M = undefined>(
     () => new Map(),
   )
 
-  // Per-cell `ResizeObserver` aggregator, created eagerly on the first
-  // render so the tracker is guaranteed to exist by the time any cell's
-  // ref callback fires. `setMeasuredHeights` is a stable React setter,
-  // so the closure captures a correct reference regardless of which
-  // render created the tracker.
+  // Per-cell `ResizeObserver` aggregator.
+  //
+  // Incoming measurements buffer in `pendingMeasurementsRef` and flush
+  // once per frame via `requestAnimationFrame`. Without the buffer, each
+  // RO callback would run `new Map(prev).set(id, h)` in its own state
+  // updater — on initial mount of N cells that's O(N²) Map allocations
+  // because each updater copies every prior update's changes. Coalescing
+  // to one setter call per frame makes it O(N).
+  //
+  // `ensureTracker` is shared between the eager init below, the mount
+  // effect's replay, and the per-cell ref callback so all three paths
+  // create the tracker via the same batched `onChange`.
   const trackerRef = useRef<MeasuredHeightTracker | null>(null)
-  trackerRef.current ??= createMeasuredHeightTracker((id, h) => {
-    setMeasuredHeights((prev) => {
-      if (prev.get(id) === h) return prev
-      return new Map(prev).set(id, h)
+  const pendingMeasurementsRef = useRef(new Map<string, number>())
+  const flushRafRef = useRef<number | null>(null)
+
+  const ensureTracker = useCallback((): MeasuredHeightTracker => {
+    trackerRef.current ??= createMeasuredHeightTracker((id, h) => {
+      pendingMeasurementsRef.current.set(id, h)
+      if (flushRafRef.current !== null) return
+      flushRafRef.current = window.requestAnimationFrame(() => {
+        flushRafRef.current = null
+        const pending = pendingMeasurementsRef.current
+        pendingMeasurementsRef.current = new Map()
+        setMeasuredHeights((prev) => {
+          let changed = false
+          for (const [pid, ph] of pending) {
+            if (prev.get(pid) !== ph) {
+              changed = true
+              break
+            }
+          }
+          if (!changed) return prev
+          const next = new Map(prev)
+          for (const [pid, ph] of pending) next.set(pid, ph)
+          return next
+        })
+      })
     })
-  })
+    return trackerRef.current
+  }, [])
+
+  // Eager init — tracker exists before any ref fires, and `ensureTracker`
+  // also recreates it if StrictMode's simulated cleanup nulled it.
+  ensureTracker()
 
   // Elements currently observed, keyed by cell id. The cell ref callback
   // updates this map on attach/detach. The effect below re-observes every
@@ -238,8 +271,7 @@ export function useMasonry<M = undefined>(
   const shouldReplayRef = useRef(false)
 
   useEffect(() => {
-    const tracker = trackerRef.current
-    if (!tracker) return NOOP_CLEANUP
+    const tracker = ensureTracker()
     if (shouldReplayRef.current) {
       for (const [id, element] of observedElementsRef.current) {
         tracker.observe(id, element)
@@ -249,8 +281,13 @@ export function useMasonry<M = undefined>(
       trackerRef.current?.disconnect()
       trackerRef.current = null
       shouldReplayRef.current = true
+      if (flushRafRef.current !== null) {
+        cancelAnimationFrame(flushRafRef.current)
+        flushRafRef.current = null
+      }
+      pendingMeasurementsRef.current.clear()
     }
-  }, [])
+  }, [ensureTracker])
 
   // Swap measured cells out for a `HeightCell` once we have their real height;
   // leave them as-is otherwise (core's `computeLayout` falls back to
@@ -317,16 +354,7 @@ export function useMasonry<M = undefined>(
             // Track the element so the mount effect can re-attach the
             // observer after StrictMode's simulated unmount/remount.
             observedElementsRef.current.set(id, el)
-            // Tracker is eagerly initialized in the render body, but the
-            // cleanup effect can null it between StrictMode passes — on
-            // a second attach after cleanup, `??=` recreates the tracker.
-            trackerRef.current ??= createMeasuredHeightTracker((tid, h) => {
-              setMeasuredHeights((prev) => {
-                if (prev.get(tid) === h) return prev
-                return new Map(prev).set(tid, h)
-              })
-            })
-            trackerRef.current.observe(id, el)
+            ensureTracker().observe(id, el)
           } else {
             observedElementsRef.current.delete(id)
             trackerRef.current?.unobserve(id)
@@ -336,8 +364,20 @@ export function useMasonry<M = undefined>(
       }
       return refFn
     },
-    [measuredIds],
+    [measuredIds, ensureTracker],
   )
+
+  // Prune `refCacheRef` of entries for ids no longer in the input.
+  // Without this, long-running apps (infinite scroll, filters) would
+  // accumulate stale per-id closures indefinitely.
+  useEffect(() => {
+    const activeIds = new Set<string>()
+    for (const c of cells) activeIds.add(c.id)
+    const cache = refCacheRef.current
+    for (const id of cache.keys()) {
+      if (!activeIds.has(id)) cache.delete(id)
+    }
+  }, [cells])
 
   const stableOrderRef = useRef<string[]>([])
   const stableCells = useMemo<readonly LayoutCell<M>[]>(() => {
@@ -370,8 +410,15 @@ export function useMasonry<M = undefined>(
   useEffect(() => {
     if (!virtualizeEnabled) return NOOP_CLEANUP
     const scrollParent: EventTarget = virtualizeScrollParent ?? window
+    // rAF-coalesce: scroll events can fire at ~120 Hz on high-refresh
+    // trackpads. Without coalescing we'd run one re-render per event.
+    let rafId: number | null = null
     const onChange = () => {
-      setViewportTick((t) => t + 1)
+      if (rafId !== null) return
+      rafId = window.requestAnimationFrame(() => {
+        rafId = null
+        setViewportTick((t) => t + 1)
+      })
     }
     scrollParent.addEventListener('scroll', onChange, { passive: true })
     window.addEventListener('resize', onChange, { passive: true })
@@ -379,6 +426,7 @@ export function useMasonry<M = undefined>(
     return () => {
       scrollParent.removeEventListener('scroll', onChange)
       window.removeEventListener('resize', onChange)
+      if (rafId !== null) cancelAnimationFrame(rafId)
     }
   }, [virtualizeEnabled, virtualizeScrollParent])
 
